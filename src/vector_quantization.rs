@@ -12,8 +12,10 @@ impl VectorQuantization {
     /// 
     /// # Arguments
     /// 
-    /// * `vec1` The first vector
-    /// * `vec2` The second vector
+    /// * `num_prototypes` The number of prototypes to use
+    /// * `learning_rate`  The learning rate for the update step of the prototypes
+    /// * `max_epochs`     The amount of epochs to run
+    /// * `prototypes`     A vector of the prototypes (initially empty)
     /// 
     pub fn new ( num_prototypes: u32, 
                     learning_rate: f64,
@@ -25,7 +27,7 @@ impl VectorQuantization {
             num_prototypes: num_prototypes,
             learning_rate: learning_rate,
             max_epochs: max_epochs, 
-            seed: seed,
+            seed: seed, // TODO: Implement
             prototypes: Vec::<Prototype>::new(),
         }
     }

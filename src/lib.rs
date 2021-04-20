@@ -7,8 +7,8 @@ mod helpers;
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
 /// 
 /// # Properties
-/// `vector`    The vector data of the prototype
-/// `name`      The name of the vector (for readability only)
+/// * `vector`    The vector data of the prototype
+/// * `name`      The name of the vector (for readability only)
 #[derive(Debug)]
 pub struct Prototype {
     vector: Array1<f64>,
@@ -22,9 +22,10 @@ pub struct Prototype {
 /// Each group is represented by its centroid point, in this case a prototype vector
 /// 
 /// # Properties
-/// `num_prototypes` The amount of prototypes to use for the clustering
-/// `learning_rate`  The learning rate for the update step of the prototypes
-/// `max_epochs`     The amount of epochs to run
+/// * `num_prototypes` The amount of prototypes to use for the clustering
+/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `max_epochs`     The amount of epochs to run
+/// * `prototypes`     A vector of the prototypes (initially empty)
 #[derive(Debug)]
 pub struct VectorQuantization {
     num_prototypes : u32,
