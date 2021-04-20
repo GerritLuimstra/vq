@@ -10,7 +10,7 @@ mod helpers;
 /// `vector`    The vector data of the prototype
 /// `name`      The name of the vector (for readability only)
 #[derive(Debug)]
-struct Prototype {
+pub struct Prototype {
     vector: Array1<f64>,
     name: String
 }

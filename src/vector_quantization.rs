@@ -107,13 +107,59 @@ impl VectorQuantization {
         }
     }
     
-    // TODO: Implement properly
-    pub fn predict(&self, data : &Vec<Vec<f64>>) 
-    {
+    /// Assign cluster labels (i.e. predict) to the data given data
+    /// based on the learned prototype vectors
+    /// 
+    /// # Arguments
+    /// 
+    /// * `data` The data to obtain the cluster labels for
+    /// 
+    pub fn predict(&self, data : &Vec<Array1<f64>>) -> Vec<String> {
+
         // Check for valid input
         assert!(data.len() > 0, "There are no data samples given.");
         assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
+        assert!(self.prototypes[0].vector.len() == data[0].len(), 
+                "Data must be the same sized as was used in fit!");
 
-        
+        let mut cluster_labels = Vec::<String>::new();
+
+        for data_sample in data {
+
+            // Obtain the closest prototype
+            let closest_prototype_index = self.find_closest_prototype(&data_sample);
+            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
+
+            // Add the cluster label to the list
+            cluster_labels.push(closest_prototype.name.clone());
+        }
+
+        cluster_labels
     }
+    
+    /// Names the internal prototypes to the given names
+    /// 
+    /// NOTE: This affects the labels returned by the predict method.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `names` The names (in order) to give to the prototypes
+    /// 
+    pub fn name_prototypes(&mut self, names : &Vec<String>) {
+
+        // Check for valid input
+        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
+        assert!(names.len() == self.prototypes.len(), 
+                "The size of the names vectors does not match the amount of the prototypes.");
+
+        for (index, name) in names.iter().enumerate() {
+            self.prototypes[index].name = name.clone();
+        }
+    }
+
+    /// Simple getter for the prototype clusters
+    pub fn prototypes(&self) -> &Vec<Prototype> {
+        &self.prototypes
+    }
+
 }
