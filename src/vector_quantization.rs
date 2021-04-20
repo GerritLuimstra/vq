@@ -63,7 +63,7 @@ impl VectorQuantization {
     /// 
     /// * `data` The data to adapt the prototypes on
     /// 
-    pub fn fit (&mut self, data : &Vec<Vec<f64>>) {
+    pub fn fit (&mut self, data : &Vec<Array1<f64>>) {
 
         // Assert that there is enough data
         assert!(data.len() as u32 > self.num_prototypes, 
@@ -78,7 +78,6 @@ impl VectorQuantization {
             // Obtain a random prototype and clone/own it
             let selected_prototype = data.choose(&mut rand::thread_rng()).unwrap();
             let selected_prototype = selected_prototype.clone();
-            let selected_prototype = Array1::<f64>::from_vec(selected_prototype);
             let selected_prototype = Prototype::new(selected_prototype, index.to_string());
 
             // Add the newly created prototypes to the prototype list
@@ -95,10 +94,6 @@ impl VectorQuantization {
 
             for data_sample in cloned_data.iter() {
 
-                // Convert the sample to a ndarray type here
-                // TODO: For more speed, do this once at the beginning instead
-                let data_sample = Array1::<f64>::from_vec(data_sample.clone());
-
                 // Find the closest prototype to the data point
                 let closest_prototype_index = self.find_closest_prototype(&data_sample);
                 let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
@@ -113,10 +108,12 @@ impl VectorQuantization {
     }
     
     // TODO: Implement properly
-    pub fn predict(&self) 
+    pub fn predict(&self, data : &Vec<Vec<f64>>) 
     {
-        if self.prototypes.len() == 0 {
-            panic!("This won't work.")
-        }
+        // Check for valid input
+        assert!(data.len() > 0, "There are no data samples given.");
+        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
+
+        
     }
 }
