@@ -1,33 +1,33 @@
 use super::Prototype;
-use super::VectorQuantization;
+use super::LearningVectorQuantization;
 use super::helpers::euclidean_distance;
 
 use ndarray::Array1;
 use rand::prelude::thread_rng;
 use rand::seq::SliceRandom;
 
-impl VectorQuantization {
+impl LearningVectorQuantization {
 
-    /// Constructs a new Vector Quantization model
+    /// Constructs a new Learning Vector Quantization model
     /// 
     /// # Arguments
     /// 
-    /// * `num_prototypes` The number of prototypes to use
+    /// * `num_prototypes` The amount of prototypes to use per class (a vector, so this can be variable)
     /// * `learning_rate`  The learning rate for the update step of the prototypes
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// 
-    pub fn new (num_prototypes: u32, 
-                learning_rate: f64,
-                max_epochs: u32, 
-                seed: Option<u32> ) -> VectorQuantization {
+    pub fn new ( num_prototypes: Vec<usize>, 
+                 learning_rate: f64,
+                 max_epochs: u32, 
+                 seed: Option<u32> ) -> LearningVectorQuantization {
         
         // Setup the model
-        VectorQuantization {
-            num_prototypes: num_prototypes,
-            learning_rate: learning_rate,
-            max_epochs: max_epochs, 
-            seed: seed, // TODO: Implement
+        LearningVectorQuantization {
+            num_prototypes,
+            learning_rate,
+            max_epochs, 
+            seed, // TODO: Implement
             prototypes: Vec::<Prototype>::new(),
         }
     }
@@ -66,49 +66,9 @@ impl VectorQuantization {
     /// * `data` The data to adapt the prototypes on
     /// 
     pub fn fit (&mut self, data : &Vec<Array1<f64>>) {
-
-        // Assert that there is enough data
-        assert!(data.len() as u32 > self.num_prototypes, 
-                "There are more prototypes than data samples. Consider lowering the amount of prototypes.");
-
-        // Assert that the model has not been fit yet
-        assert!(self.prototypes.len() == 0, "This model has already been fit.");
-
-        // Setup the prototypes by grabbing `num_prototypes` vectors from the data
-        for index in 0..self.num_prototypes {
-
-            // Obtain a random prototype and clone/own it
-            let selected_prototype = data.choose(&mut rand::thread_rng()).unwrap();
-            let selected_prototype = selected_prototype.clone();
-            let selected_prototype = Prototype::new(selected_prototype, index.to_string());
-
-            // Add the newly created prototypes to the prototype list
-            self.prototypes.push(selected_prototype);
-        }
-        
-        // Create a copy of the data, so we do not change the underlying data
-        let mut cloned_data = data.clone();
-
-        for _epoch in 1 .. self.max_epochs + 1 {
-
-            // Shuffle the data to prevent artifacts during training
-            cloned_data.shuffle(&mut thread_rng());
-
-            for data_sample in cloned_data.iter() {
-
-                // Find the closest prototype to the data point
-                let closest_prototype_index = self.find_closest_prototype(&data_sample);
-                let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
-
-                // Compute the new prototype
-                let new_prototype = closest_prototype.vector.clone() + self.learning_rate * (data_sample - closest_prototype.vector.clone());
-
-                // Replace the old prototype
-                self.prototypes[closest_prototype_index].vector = new_prototype;
-            }
-        }
+        assert!(false, "NOT YET IMPLEMENTED.");
     }
-    
+
     /// Assign cluster labels (i.e. predict) to the data given data
     /// based on the learned prototype vectors
     /// 

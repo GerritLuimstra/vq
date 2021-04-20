@@ -1,14 +1,16 @@
 use ndarray::Array1;
 
+mod helpers;
 mod prototype;
 mod vector_quantization;
-mod helpers;
+mod learning_vector_quantization;
 
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
 /// 
 /// # Properties
 /// * `vector`    The vector data of the prototype
 /// * `name`      The name of the vector (for readability only)
+/// 
 #[derive(Debug)]
 pub struct Prototype {
     vector: Array1<f64>,
@@ -19,16 +21,51 @@ pub struct Prototype {
 /// 
 /// This struct and its methods allow the modeling of probability density functions of a given data set by the distribution of prototype vectors. 
 /// It works by dividing a large set of points (vectors) into groups having approximately the same number of points closest to them. 
-/// Each group is represented by its centroid point, in this case a prototype vector
+/// Each group is represented by its centroid point, in this case a prototype vector.
+/// 
+/// For more information on vector quantization:
+/// [Wikipedia](https://en.wikipedia.org/wiki/Vector_quantization)
 /// 
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use for the clustering
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
 /// * `prototypes`     A vector of the prototypes (initially empty)
+/// 
 #[derive(Debug)]
 pub struct VectorQuantization {
     num_prototypes : u32,
+    learning_rate : f64,
+    max_epochs : u32, 
+    seed : Option<u32>, // TODO: Implement
+
+    prototypes : Vec<Prototype>
+}
+
+/// The Learning Vector Quantization model
+/// 
+/// This struct and its methods provide an implementation of the LVQ model.
+/// 
+/// An LVQ system is represented by prototypes which are defined in the feature space of observed data. 
+/// In a Hebbian-like winner-take-all fashion the algorithm determines
+/// the prototype which is closest to a data point according to a given distance measure.
+/// The position of this so-called winner prototype is then adapted, i.e. the winner is moved closer if it correctly classifies the data point
+/// or moved away if it classifies the data point incorrectly.
+/// 
+/// For more information on learning vector quantization:
+/// [Wikipedia](https://en.wikipedia.org/wiki/Learning_vector_quantization)
+/// 
+/// This specific implementation allows for a variable number of prototypes per class.
+/// 
+/// # Properties
+/// * `num_prototypes` The amount of prototypes to use per class (a vector, so this can be variable)
+/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `max_epochs`     The amount of epochs to run
+/// * `prototypes`     A vector of the prototypes (initially empty)
+/// 
+#[derive(Debug)]
+pub struct LearningVectorQuantization {
+    num_prototypes : Vec<usize>,
     learning_rate : f64,
     max_epochs : u32, 
     seed : Option<u32>, // TODO: Implement
