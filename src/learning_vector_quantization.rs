@@ -174,26 +174,6 @@ impl LearningVectorQuantization {
 
         cluster_labels
     }
-    
-    /// Names the internal prototypes to the given names
-    /// 
-    /// NOTE: This affects the labels returned by the predict method.
-    /// 
-    /// # Arguments
-    /// 
-    /// * `names` The names (in order) to give to the prototypes
-    /// 
-    pub fn name_prototypes(&mut self, names : &Vec<String>) {
-
-        // Check for valid input
-        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
-        assert!(names.len() == self.prototypes.len(), 
-                "The size of the names vectors does not match the amount of the prototypes.");
-
-        for (index, name) in names.iter().enumerate() {
-            self.prototypes[index].name = name.clone();
-        }
-    }
 
     /// Simple getter for the prototype clusters
     pub fn prototypes(&self) -> &Vec<Prototype> {
