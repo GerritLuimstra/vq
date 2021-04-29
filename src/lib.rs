@@ -3,8 +3,9 @@ use std::collections::HashMap;
 
 mod helpers;
 mod prototype;
-mod vector_quantization;
-mod learning_vector_quantization;
+mod vq;
+mod lvq;
+mod glvq;
 
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
 /// 
@@ -38,7 +39,7 @@ pub struct Prototype {
 pub struct VectorQuantization {
     num_prototypes : u32,
     learning_rate : f64,
-    max_epochs : u32, 
+    max_epochs : u32,
     seed : Option<u32>, // TODO: Implement
 
     prototypes : Vec<Prototype>
@@ -67,6 +68,17 @@ pub struct VectorQuantization {
 /// 
 #[derive(Debug)]
 pub struct LearningVectorQuantization {
+    num_prototypes : HashMap<String, usize>,
+    learning_rate : f64,
+    max_epochs : u32, 
+    seed : Option<u32>, // TODO: Implement
+
+    prototypes : Vec<Prototype>
+}
+
+/// TODO: Comment.
+#[derive(Debug)]
+pub struct GeneralLearningVectorQuantization {
     num_prototypes : HashMap<String, usize>,
     learning_rate : f64,
     max_epochs : u32, 
