@@ -62,7 +62,7 @@ impl LearningVectorQuantization {
         closest_prototype_index
     }
 
-    /// Fits the Vector Quantization model on the given data
+    /// Fits the Learning Vector Quantization model on the given data
     /// 
     /// # Arguments
     /// 

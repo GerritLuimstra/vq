@@ -76,7 +76,24 @@ pub struct LearningVectorQuantization {
     prototypes : Vec<Prototype>
 }
 
-/// TODO: Comment.
+/// The General Learning Vector Quantization (GLVQ) model
+///
+/// This struct and its methods provide an implementation of the generalization of the LVQ model using stochastic gradient descent,
+/// in which reference vectors are updated based on the steepest descent method in order to minimize the cost function.
+/// In the paper, the cost function is determined so that the obtained learning rule satisfies the convergence condition.
+///
+/// The implementation is heavily based on the following paper by Atsushi Sato & Keiji Yamada [[1]](https://papers.nips.cc/paper/1995/file/9c3b1830513cc3b8fc4b76635d32e692-Paper.pdf).
+///
+/// This specific implementation allows for a variable number of prototypes per class.
+///
+/// **NOTE**: Currently the distance metric is restricted to Euclidean distance only!
+///
+/// # Properties
+/// * `num_prototypes` The amount of prototypes to use per class (a hashmap, that maps the class name to the number of prototypes to use)
+/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `max_epochs`     The amount of epochs to run
+/// * `prototypes`     A vector of the prototypes (initially empty)
+///
 #[derive(Debug)]
 pub struct GeneralLearningVectorQuantization {
     num_prototypes : HashMap<String, usize>,
