@@ -9,7 +9,17 @@ use rand::prelude::thread_rng;
 
 impl GeneralLearningVectorQuantization {
 
-    /// TODO: Add comments.
+    /// Constructs a new General Learning Vector Quantization model
+    /// 
+    /// # Arguments
+    /// 
+    /// * `num_prototypes` The amount of prototypes to use per class (a hashmap, that maps the class name to the number of prototypes to use)
+    ///                    This hashmap should be provided as a reference and the algorithm will panic if there are classes 
+    ///                    in the data not present in this hashmap.
+    /// * `learning_rate`  The learning rate for the update step of the prototypes
+    /// * `max_epochs`     The amount of epochs to run
+    /// * `prototypes`     A vector of the prototypes (initially empty)
+    /// 
     pub fn new ( num_prototypes: HashMap<String, usize>, 
                  learning_rate: f64,
                  max_epochs: u32, 
