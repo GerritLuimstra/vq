@@ -3,8 +3,13 @@ use std::collections::HashMap;
 
 mod helpers;
 mod prototype;
+
+// Link the required modules
+#[path = "vq/vq.rs"]
 mod vq;
+#[path = "lvq/lvq.rs"]
 mod lvq;
+#[path = "glvq/glvq.rs"]
 mod glvq;
 
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
