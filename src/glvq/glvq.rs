@@ -1,6 +1,7 @@
 use super::Prototype;
 use super::GeneralLearningVectorQuantization;
-use super::helpers::euclidean_distance;
+use super::helpers::find_closest_prototype_matched;
+use super::helpers::{euclidean_distance, find_closest_prototype};
 
 use ndarray::Array1;
 use rand::seq::SliceRandom;
@@ -33,82 +34,6 @@ impl GeneralLearningVectorQuantization {
             seed, // TODO: Implement
             prototypes: Vec::<Prototype>::new(),
         }
-    }
-
-    /// Obtains the closest prototype index for a given sample
-    /// 
-    /// # Arguments
-    /// 
-    /// * `sample` The sample to find the closest prototype for
-    /// 
-    fn find_closest_prototype (&self, sample : &Array1<f64>) -> usize {
-
-        // Initialize values
-        let mut closest_prototype_index = 0 as usize;
-        let mut smallest_distance       = f64::INFINITY;
-
-        for (index, prototype) in self.prototypes.iter().enumerate() {
-
-            // Obtain the difference between the sample and the current prototype
-            let distance = euclidean_distance(&prototype.vector, sample);
-
-            // Update the current closest, if we have found a one that is closer
-            if distance < smallest_distance {
-                closest_prototype_index = index;
-                smallest_distance       = distance;
-            }
-        }
-
-        closest_prototype_index
-    }
-
-    /// Obtains the closest matching prototype index for a given sample
-    /// If the `find_closest_matching` is set to false, 
-    /// obtain the closest prototype with a different class instead.
-    /// 
-    /// # Arguments
-    /// 
-    /// * `sample` The sample to find the closest prototype for
-    /// * `label`  The label of the sample
-    /// * `find_closest_matching` Determines whether the closest matching 
-    /// or non-matching prototype is to be found.
-    fn find_closest_prototype_matched (&self, 
-                                        sample : &Array1<f64>, 
-                                        label: &String,
-                                        find_closest_matching: bool) -> usize {
-       
-        // Initialize values
-        let mut closest_prototype_index = 0 as usize;
-        let mut smallest_distance       = f64::INFINITY;
-
-        for (index, prototype) in self.prototypes.iter().enumerate() {
-
-            // Obtain the difference between the sample and the current prototype
-            let distance = euclidean_distance(&prototype.vector, sample);
-
-            // Find the closest prototype with the same class
-            if find_closest_matching {
-                
-                // Update the current closest, if we have found a one that is closer
-                if distance < smallest_distance && prototype.name == *label {
-                    closest_prototype_index = index;
-                    smallest_distance       = distance;
-                }
-
-            } else {
-                // In this case, we want to find the closest prototype with a different class
-
-                // Update the current closest, if we have found a one that is closer
-                if distance < smallest_distance && prototype.name != *label {
-                    closest_prototype_index = index;
-                    smallest_distance       = distance;
-                }
-
-            }
-        
-        }
-
-        closest_prototype_index
     }
 
     /// Fits the General Learning Vector Quantization model on the given data
@@ -145,13 +70,17 @@ impl GeneralLearningVectorQuantization {
                 }
             }
 
-            // Obtain a random prototype from the data samples by class and clone/own it
-            let selected_prototype = data_samples_by_class.choose(&mut rand::thread_rng()).unwrap();
-            let selected_prototype = selected_prototype.clone();
-            let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
+            // Grab 'num_prototypes' prototypes
+            for _ in 0 .. *num_prototypes {
 
-            // Add the newly created prototypes to the prototype list
-            self.prototypes.push(selected_prototype);
+                // Obtain a random prototype from the data samples by class and clone/own it
+                let selected_prototype = data_samples_by_class.choose(&mut rand::thread_rng()).unwrap();
+                let selected_prototype = selected_prototype.clone();
+                let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
+
+                // Add the newly created prototypes to the prototype list
+                self.prototypes.push(selected_prototype);
+            }
         }
 
         for _epoch in 1 .. self.max_epochs + 1 {
@@ -175,8 +104,12 @@ impl GeneralLearningVectorQuantization {
                 let label = &shuffled_labels[index];
 
                 // Find the closest matching and non matching prototypes
-                let closest_matching_prototype_index     = self.find_closest_prototype_matched(&data_sample, &label, true);
-                let closest_non_matching_prototype_index = self.find_closest_prototype_matched(&data_sample, &label, false);
+                let closest_matching_prototype_index     = find_closest_prototype_matched(&self.prototypes,
+                                                                                          &data_sample, 
+                                                                                          &label, true);
+                let closest_non_matching_prototype_index = find_closest_prototype_matched(&self.prototypes,
+                                                                                          &data_sample, 
+                                                                                          &label, false);
                 let closest_matching_prototype     = self.prototypes.get(closest_matching_prototype_index).unwrap();
                 let closest_non_matching_prototype = self.prototypes.get(closest_non_matching_prototype_index).unwrap();
 
@@ -227,7 +160,7 @@ impl GeneralLearningVectorQuantization {
         for data_sample in data {
 
             // Obtain the closest prototype
-            let closest_prototype_index = self.find_closest_prototype(&data_sample);
+            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
             let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
             // Add the cluster label to the list

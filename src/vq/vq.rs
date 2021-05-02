@@ -1,6 +1,6 @@
 use super::Prototype;
 use super::VectorQuantization;
-use super::helpers::euclidean_distance;
+use super::helpers::find_closest_prototype;
 
 use ndarray::Array1;
 use rand::prelude::thread_rng;
@@ -30,33 +30,6 @@ impl VectorQuantization {
             seed: seed, // TODO: Implement
             prototypes: Vec::<Prototype>::new(),
         }
-    }
-
-    /// Obtains the closest prototype index for a given sample
-    /// 
-    /// # Arguments
-    /// 
-    /// * `sample` The sample to find the closest prototype for
-    /// 
-    fn find_closest_prototype (&self, sample : &Array1<f64>) -> usize {
-
-        // Initialize values
-        let mut closest_prototype_index = 0 as usize;
-        let mut smallest_distance       = f64::INFINITY;
-
-        for (index, prototype) in self.prototypes.iter().enumerate() {
-
-            // Obtain the difference between the sample and the current prototype
-            let distance = euclidean_distance(&prototype.vector, sample);
-
-            // Update the current closest, if we have found a one that is closer
-            if distance < smallest_distance {
-                closest_prototype_index = index;
-                smallest_distance       = distance;
-            }
-        }
-
-        closest_prototype_index
     }
 
     /// Fits the Vector Quantization model on the given data
@@ -97,7 +70,7 @@ impl VectorQuantization {
             for data_sample in cloned_data.iter() {
 
                 // Find the closest prototype to the data point
-                let closest_prototype_index = self.find_closest_prototype(&data_sample);
+                let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
                 let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
                 // Compute the new prototype
@@ -131,7 +104,7 @@ impl VectorQuantization {
         for data_sample in data {
 
             // Obtain the closest prototype
-            let closest_prototype_index = self.find_closest_prototype(&data_sample);
+            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
             let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
             // Add the cluster label to the list

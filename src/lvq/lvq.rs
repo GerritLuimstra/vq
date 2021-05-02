@@ -1,6 +1,6 @@
 use super::Prototype;
 use super::LearningVectorQuantization;
-use super::helpers::euclidean_distance;
+use super::helpers::find_closest_prototype;
 
 use ndarray::Array1;
 use rand::seq::SliceRandom;
@@ -33,33 +33,6 @@ impl LearningVectorQuantization {
             seed, // TODO: Implement
             prototypes: Vec::<Prototype>::new(),
         }
-    }
-
-    /// Obtains the closest prototype index for a given sample
-    /// 
-    /// # Arguments
-    /// 
-    /// * `sample` The sample to find the closest prototype for
-    /// 
-    fn find_closest_prototype (&self, sample : &Array1<f64>) -> usize {
-
-        // Initialize values
-        let mut closest_prototype_index = 0 as usize;
-        let mut smallest_distance       = f64::INFINITY;
-
-        for (index, prototype) in self.prototypes.iter().enumerate() {
-
-            // Obtain the difference between the sample and the current prototype
-            let distance = euclidean_distance(&prototype.vector, sample);
-
-            // Update the current closest, if we have found a one that is closer
-            if distance < smallest_distance {
-                closest_prototype_index = index;
-                smallest_distance       = distance;
-            }
-        }
-
-        closest_prototype_index
     }
 
     /// Fits the Learning Vector Quantization model on the given data
@@ -96,13 +69,17 @@ impl LearningVectorQuantization {
                 }
             }
 
-            // Obtain a random prototype from the data samples by class and clone/own it
-            let selected_prototype = data_samples_by_class.choose(&mut rand::thread_rng()).unwrap();
-            let selected_prototype = selected_prototype.clone();
-            let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
+            // Grab 'num_prototypes' prototypes
+            for _ in 0 .. *num_prototypes {
+                // Obtain a random prototype from the data samples by class and clone/own it
+                let selected_prototype = data_samples_by_class.choose(&mut rand::thread_rng()).unwrap();
+                let selected_prototype = selected_prototype.clone();
+                let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
 
-            // Add the newly created prototypes to the prototype list
-            self.prototypes.push(selected_prototype);
+                // Add the newly created prototypes to the prototype list
+                self.prototypes.push(selected_prototype);
+            }
+            
         }
 
         for _epoch in 1 .. self.max_epochs + 1 {
@@ -124,7 +101,7 @@ impl LearningVectorQuantization {
             for (index, data_sample) in shuffled_data.iter().enumerate() {
 
                 // Find the closest prototype to the data point
-                let closest_prototype_index = self.find_closest_prototype(&data_sample);
+                let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
                 let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap();
 
                 // Compute the difference vector (the 'error')
@@ -166,7 +143,7 @@ impl LearningVectorQuantization {
         for data_sample in data {
 
             // Obtain the closest prototype
-            let closest_prototype_index = self.find_closest_prototype(&data_sample);
+            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
             let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
             // Add the cluster label to the list
