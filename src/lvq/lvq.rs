@@ -95,8 +95,6 @@ impl LearningVectorQuantization {
             
         }
 
-        println!("{:#?}", self.prototypes);
-
         for _epoch in 1 .. self.max_epochs + 1 {
 
             // Shuffle the data to prevent artifacts during training
