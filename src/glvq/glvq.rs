@@ -3,10 +3,12 @@ use super::GeneralLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{euclidean_distance, find_closest_prototype};
 
+use rand::Rng;
 use ndarray::Array1;
+use rand::SeedableRng;
 use rand::seq::SliceRandom;
-use std::collections::HashMap;
-use rand::prelude::thread_rng;
+use rand_chacha::ChaChaRng;
+use std::collections::BTreeMap;
 
 impl GeneralLearningVectorQuantization {
 
@@ -14,24 +16,33 @@ impl GeneralLearningVectorQuantization {
     /// 
     /// # Arguments
     /// 
-    /// * `num_prototypes` The amount of prototypes to use per class (a hashmap, that maps the class name to the number of prototypes to use)
-    ///                    This hashmap should be provided as a reference and the algorithm will panic if there are classes 
-    ///                    in the data not present in this hashmap.
+    /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
+    ///                    This BTreeMap should be provided as a reference and the algorithm will panic if there are classes
+    ///                    in the data not present in this BTreeMap.
+    ///                    A BTreeMap is used instead of a HashMap due to the ability of sorted keys, which is required for reproducability.
     /// * `learning_rate`  The learning rate for the update step of the prototypes
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
+    /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
-    pub fn new ( num_prototypes: HashMap<String, usize>, 
+    pub fn new ( num_prototypes: BTreeMap<String, usize>,
                  learning_rate: f64,
-                 max_epochs: u32, 
-                 seed: Option<u32> ) -> GeneralLearningVectorQuantization {
+                 max_epochs: u32,
+                 seed: Option<u64> ) -> GeneralLearningVectorQuantization {
         
         // Setup the model
         GeneralLearningVectorQuantization {
             num_prototypes,
             learning_rate,
             max_epochs, 
-            seed, // TODO: Implement
+            rng: {
+                if seed != None {
+                    println!("{:?}", seed);
+                    ChaChaRng::seed_from_u64(seed.unwrap())
+                } else {
+                    ChaChaRng::seed_from_u64(rand::thread_rng().gen::<u64>())
+                }
+            },
             prototypes: Vec::<Prototype>::new(),
         }
     }
@@ -74,7 +85,7 @@ impl GeneralLearningVectorQuantization {
             for _ in 0 .. *num_prototypes {
 
                 // Obtain a random prototype from the data samples by class and clone/own it
-                let selected_prototype = data_samples_by_class.choose(&mut rand::thread_rng()).unwrap();
+                let selected_prototype = data_samples_by_class.choose(&mut self.rng).unwrap();
                 let selected_prototype = selected_prototype.clone();
                 let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
 
@@ -88,7 +99,7 @@ impl GeneralLearningVectorQuantization {
             // Shuffle the data to prevent artifacts during training
             // We should be careful to shuffle the labels and data in the same matter
             let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
-            shuffled_indices.shuffle(&mut thread_rng());
+            shuffled_indices.shuffle(&mut self.rng);
 
             // Create shuffled (and cloned) data based on the shuffled indices
             let mut shuffled_data   = vec![];

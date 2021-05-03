@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 rand = "0.8.0"
+rand_chacha = "0.3.0"
 ndarray = "0.15.1"

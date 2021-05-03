@@ -1,5 +1,6 @@
 use ndarray::Array1;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use rand_chacha::ChaChaRng;
 
 mod helpers;
 mod prototype;
@@ -20,8 +21,8 @@ mod glvq;
 /// 
 #[derive(Debug)]
 pub struct Prototype {
-    vector: Array1<f64>,
-    name: String
+    pub vector: Array1<f64>,
+    pub name: String
 }
 
 /// The Vector Quantization model
@@ -66,18 +67,18 @@ pub struct VectorQuantization {
 /// This specific implementation allows for a variable number of prototypes per class.
 /// 
 /// # Properties
-/// * `num_prototypes` The amount of prototypes to use per class (a hashmap, that maps the class name to the number of prototypes to use)
+/// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
 /// * `prototypes`     A vector of the prototypes (initially empty)
+/// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
 #[derive(Debug)]
 pub struct LearningVectorQuantization {
-    num_prototypes : HashMap<String, usize>,
+    num_prototypes : BTreeMap<String, usize>,
     learning_rate : f64,
     max_epochs : u32, 
-    seed : Option<u32>, // TODO: Implement
-
+    rng : ChaChaRng,
     prototypes : Vec<Prototype>
 }
 
@@ -94,17 +95,17 @@ pub struct LearningVectorQuantization {
 /// **NOTE**: Currently the distance metric is restricted to Euclidean distance only!
 ///
 /// # Properties
-/// * `num_prototypes` The amount of prototypes to use per class (a hashmap, that maps the class name to the number of prototypes to use)
+/// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
 /// * `prototypes`     A vector of the prototypes (initially empty)
+/// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
 #[derive(Debug)]
 pub struct GeneralLearningVectorQuantization {
-    num_prototypes : HashMap<String, usize>,
+    num_prototypes : BTreeMap<String, usize>,
     learning_rate : f64,
     max_epochs : u32, 
-    seed : Option<u32>, // TODO: Implement
-
+    rng : ChaChaRng,
     prototypes : Vec<Prototype>
 }

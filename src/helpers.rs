@@ -23,6 +23,8 @@ pub fn euclidean_distance (vec1 : &Array1<f64>, vec2 : &Array1<f64>) -> f64 {
     sum.sqrt()
 }
 
+
+
 /// Obtains the closest prototype index for a given sample
 /// 
 /// # Arguments
