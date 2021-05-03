@@ -40,14 +40,14 @@ pub struct Prototype {
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
 /// * `prototypes`     A vector of the prototypes (initially empty)
+/// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
 #[derive(Debug)]
 pub struct VectorQuantization {
     num_prototypes : u32,
     learning_rate : f64,
     max_epochs : u32,
-    seed : Option<u32>, // TODO: Implement
-
+    rng : ChaChaRng,
     prototypes : Vec<Prototype>
 }
 

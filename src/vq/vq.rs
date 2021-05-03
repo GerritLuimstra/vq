@@ -2,9 +2,11 @@ use super::Prototype;
 use super::VectorQuantization;
 use super::helpers::find_closest_prototype;
 
+use rand::Rng;
 use ndarray::Array1;
-use rand::prelude::thread_rng;
 use rand::seq::SliceRandom;
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 
 impl VectorQuantization {
 
@@ -16,18 +18,25 @@ impl VectorQuantization {
     /// * `learning_rate`  The learning rate for the update step of the prototypes
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
+    /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
     pub fn new (num_prototypes: u32, 
                 learning_rate: f64,
                 max_epochs: u32, 
-                seed: Option<u32> ) -> VectorQuantization {
+                seed: Option<u64> ) -> VectorQuantization {
         
         // Setup the model
         VectorQuantization {
             num_prototypes: num_prototypes,
             learning_rate: learning_rate,
             max_epochs: max_epochs, 
-            seed: seed, // TODO: Implement
+            rng: {
+                if seed != None {
+                    ChaChaRng::seed_from_u64(seed.unwrap())
+                } else {
+                    ChaChaRng::seed_from_u64(rand::thread_rng().gen::<u64>())
+                }
+            },
             prototypes: Vec::<Prototype>::new(),
         }
     }
@@ -51,7 +60,7 @@ impl VectorQuantization {
         for index in 0..self.num_prototypes {
 
             // Obtain a random prototype and clone/own it
-            let selected_prototype = data.choose(&mut rand::thread_rng()).unwrap();
+            let selected_prototype = data.choose(&mut self.rng).unwrap();
             let selected_prototype = selected_prototype.clone();
             let selected_prototype = Prototype::new(selected_prototype, index.to_string());
 
@@ -65,7 +74,7 @@ impl VectorQuantization {
         for _epoch in 1 .. self.max_epochs + 1 {
 
             // Shuffle the data to prevent artifacts during training
-            cloned_data.shuffle(&mut thread_rng());
+            cloned_data.shuffle(&mut self.rng);
 
             for data_sample in cloned_data.iter() {
 
