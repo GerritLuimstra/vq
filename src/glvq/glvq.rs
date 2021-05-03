@@ -37,7 +37,6 @@ impl GeneralLearningVectorQuantization {
             max_epochs, 
             rng: {
                 if seed != None {
-                    println!("{:?}", seed);
                     ChaChaRng::seed_from_u64(seed.unwrap())
                 } else {
                     ChaChaRng::seed_from_u64(rand::thread_rng().gen::<u64>())
