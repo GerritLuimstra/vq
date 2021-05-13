@@ -41,13 +41,13 @@ impl VectorQuantization {
         }
     }
 
-    /// Fits the Vector Quantization model on the given data
+    ///
+    /// Checks if the required constraints are met for the model fitting stage
     /// 
-    /// # Arguments
-    /// 
-    /// * `data` The data to adapt the prototypes on
-    /// 
-    pub fn fit (&mut self, data : &Vec<Array1<f64>>) {
+    fn check_fit_constraints(&mut self, data : &Vec<Array1<f64>>) {
+
+        // Assert that there is enough data
+        assert!(self.num_prototypes >= 2, "The prototype amount needs to exceed 1.");
 
         // Assert that there is enough data
         assert!(data.len() as u32 > self.num_prototypes, 
@@ -55,6 +55,23 @@ impl VectorQuantization {
 
         // Assert that the model has not been fit yet
         assert!(self.prototypes.len() == 0, "This model has already been fit.");
+
+    }
+
+    ///
+    /// Checks if the required constraints are met for the prediction stage
+    /// 
+    fn check_predict_constraints(&mut self, data : &Vec<Array1<f64>>) {
+        assert!(data.len() > 0, "There are no data samples given.");
+        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
+        assert!(self.prototypes[0].vector.len() == data[0].len(), 
+                "Data must be the same sized as was used in fit!");
+    }
+
+    ///
+    /// Sets up the required data before the model is fit
+    /// 
+    fn setup(&mut self, data : &Vec<Array1<f64>>) {
 
         // Setup the prototypes by grabbing `num_prototypes` vectors from the data
         for index in 0..self.num_prototypes {
@@ -67,6 +84,23 @@ impl VectorQuantization {
             // Add the newly created prototypes to the prototype list
             self.prototypes.push(selected_prototype);
         }
+
+    }
+
+    /// Fits the Vector Quantization model on the given data
+    /// 
+    /// # Arguments
+    /// 
+    /// * `data` The data to adapt the prototypes on
+    /// 
+    pub fn fit (&mut self, data : &Vec<Array1<f64>>) {
+
+        // Check if the required constraints are present
+        self.check_fit_constraints(&data);
+
+        // Perform the required setup:
+        // Initialize the prototypes
+        self.setup(&data);
         
         // Create a copy of the data, so we do not change the underlying data
         let mut cloned_data = data.clone();
@@ -100,13 +134,10 @@ impl VectorQuantization {
     /// 
     /// * `data` The data to obtain the cluster labels for
     /// 
-    pub fn predict(&self, data : &Vec<Array1<f64>>) -> Vec<String> {
+    pub fn predict(&mut self, data : &Vec<Array1<f64>>) -> Vec<String> {
 
-        // Check for valid input
-        assert!(data.len() > 0, "There are no data samples given.");
-        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
-        assert!(self.prototypes[0].vector.len() == data[0].len(), 
-                "Data must be the same sized as was used in fit!");
+        // Check predict constraints
+        self.check_predict_constraints(&data);
 
         let mut cluster_labels = Vec::<String>::new();
 

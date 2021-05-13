@@ -1,6 +1,7 @@
 use super::Prototype;
-use super::LearningVectorQuantization;
-use super::helpers::find_closest_prototype;
+use super::GeneralMatrixLearningVectorQuantization;
+use super::helpers::find_closest_prototype_matched;
+use super::helpers::{euclidean_distance, find_closest_prototype};
 
 use rand::Rng;
 use ndarray::Array1;
@@ -9,14 +10,16 @@ use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
 use std::collections::BTreeMap;
 
-impl LearningVectorQuantization {
+impl GeneralMatrixLearningVectorQuantization {
 
-    /// Constructs a new Learning Vector Quantization model
+    /// Constructs a new General Learning Vector Quantization model
+    /// 
+    /// TODO: Fix documentation.
     /// 
     /// # Arguments
     /// 
     /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
-    ///                    This BTreeMap should be provided as a reference and the algorithm will panic if there are classes 
+    ///                    This BTreeMap should be provided as a reference and the algorithm will panic if there are classes
     ///                    in the data not present in this BTreeMap.
     ///                    A BTreeMap is used instead of a HashMap due to the ability of sorted keys, which is required for reproducability.
     /// * `learning_rate`  The learning rate for the update step of the prototypes
@@ -24,16 +27,17 @@ impl LearningVectorQuantization {
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
-    pub fn new ( num_prototypes: BTreeMap<String, usize>, 
+    pub fn new ( num_prototypes: BTreeMap<String, usize>,
                  learning_rate: f64,
-                 max_epochs: u32, 
-                 seed: Option<u64> ) -> LearningVectorQuantization {
-
-        // Setup the model with a default RNG
-        LearningVectorQuantization {
+                 max_epochs: u32,
+                 seed: Option<u64> ) -> GeneralMatrixLearningVectorQuantization {
+        
+        // Setup the model
+        GeneralMatrixLearningVectorQuantization {
             num_prototypes,
+            omega: None,
             learning_rate,
-            max_epochs,
+            max_epochs, 
             rng: {
                 if seed != None {
                     ChaChaRng::seed_from_u64(seed.unwrap())
@@ -43,7 +47,6 @@ impl LearningVectorQuantization {
             },
             prototypes: Vec::<Prototype>::new(),
         }
-
     }
 
     ///
@@ -63,7 +66,6 @@ impl LearningVectorQuantization {
 
         // Assert that the model has not been fit yet
         assert!(self.prototypes.len() == 0, "This model has already been fit.");
-    
     }
 
     ///
@@ -108,7 +110,7 @@ impl LearningVectorQuantization {
 
     }
 
-    /// Fits the Learning Vector Quantization model on the given data
+    /// Fits the General Matrix Learning Vector Quantization model on the given data
     /// 
     /// # Arguments
     /// 
@@ -125,43 +127,7 @@ impl LearningVectorQuantization {
         self.setup(&data, &labels);
 
         for _epoch in 1 .. self.max_epochs + 1 {
-
-            // Shuffle the data to prevent artifacts during training
-            // We should be careful to shuffle the labels and data in the same matter
-            let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
-            shuffled_indices.shuffle(&mut self.rng);
-
-            // Create shuffled (and cloned) data based on the shuffled indices
-            let mut shuffled_data   = vec![];
-            let mut shuffled_labels = vec![];
-            for index in shuffled_indices {
-                shuffled_data.push(data[index].clone());
-                shuffled_labels.push(labels[index].clone());
-            }
-
-            // Iterate over the shuffled data and update the closest prototype
-            for (index, data_sample) in shuffled_data.iter().enumerate() {
-
-                // Find the closest prototype to the data point
-                let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
-                let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap();
-
-                // Compute the difference vector (the 'error')
-                let difference = data_sample - closest_prototype.vector.clone();
-
-                // Update the current prototype by either moving it closer to the data sample
-                // if the classes of the data sample and the closest prototype match and move it
-                // further away otherwise.
-                let new_prototype;
-                if shuffled_labels[index] == closest_prototype.name {
-                    new_prototype = closest_prototype.vector.clone() + self.learning_rate * difference;
-                } else {
-                    new_prototype = closest_prototype.vector.clone() - self.learning_rate * difference;
-                }
-
-                // Replace the old prototype
-                self.prototypes[closest_prototype_index].vector = new_prototype;
-            }
+            // TODO: Implement.
         }
     }
 
@@ -180,13 +146,7 @@ impl LearningVectorQuantization {
         let mut cluster_labels = Vec::<String>::new();
 
         for data_sample in data {
-
-            // Obtain the closest prototype
-            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
-            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
-
-            // Add the cluster label to the list
-            cluster_labels.push(closest_prototype.name.clone());
+            // TODO: Implement.
         }
 
         cluster_labels

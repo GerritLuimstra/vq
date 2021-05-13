@@ -1,4 +1,4 @@
-use ndarray::Array1;
+use ndarray::{Array1, ArrayD};
 use std::collections::BTreeMap;
 use rand_chacha::ChaChaRng;
 
@@ -12,6 +12,8 @@ mod vq;
 mod lvq;
 #[path = "glvq/glvq.rs"]
 mod glvq;
+#[path = "gmlvq/gmlvq.rs"]
+mod gmlvq;
 
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
 /// 
@@ -37,18 +39,18 @@ pub struct Prototype {
 /// 
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use for the clustering
+/// * `prototypes`     A vector of the prototypes (initially empty)
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
-/// * `prototypes`     A vector of the prototypes (initially empty)
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
 #[derive(Debug)]
 pub struct VectorQuantization {
     num_prototypes : u32,
+    prototypes : Vec<Prototype>,
     learning_rate : f64,
     max_epochs : u32,
-    rng : ChaChaRng,
-    prototypes : Vec<Prototype>
+    rng : ChaChaRng
 }
 
 /// The Learning Vector Quantization model
@@ -68,18 +70,18 @@ pub struct VectorQuantization {
 /// 
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
+/// * `prototypes`     A vector of the prototypes (initially empty)
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
-/// * `prototypes`     A vector of the prototypes (initially empty)
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
 #[derive(Debug)]
 pub struct LearningVectorQuantization {
     num_prototypes : BTreeMap<String, usize>,
+    prototypes : Vec<Prototype>,
     learning_rate : f64,
     max_epochs : u32, 
-    rng : ChaChaRng,
-    prototypes : Vec<Prototype>
+    rng : ChaChaRng
 }
 
 /// The General Learning Vector Quantization (GLVQ) model
@@ -96,16 +98,38 @@ pub struct LearningVectorQuantization {
 ///
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
+/// * `prototypes`     A vector of the prototypes (initially empty)
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
-/// * `prototypes`     A vector of the prototypes (initially empty)
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
 #[derive(Debug)]
 pub struct GeneralLearningVectorQuantization {
     num_prototypes : BTreeMap<String, usize>,
+    prototypes : Vec<Prototype>,
     learning_rate : f64,
     max_epochs : u32, 
-    rng : ChaChaRng,
-    prototypes : Vec<Prototype>
+    rng : ChaChaRng
+}
+
+/// The General Matrix Learning Vector Quantization (GMLVQ) model
+///
+/// TODO: Write documentation.
+///
+/// # Properties
+/// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
+/// * `prototypes`     A vector of the prototypes (initially empty)
+/// * `omega`  The learning rate for the update step of the prototypes
+/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `max_epochs`     The amount of epochs to run
+/// * `rng`            The internal ChaChaRng to be used for reproducability.
+///
+#[derive(Debug)]
+pub struct GeneralMatrixLearningVectorQuantization {
+    num_prototypes : BTreeMap<String, usize>,
+    prototypes : Vec<Prototype>,
+    omega: Option<ArrayD<f64>>,
+    learning_rate : f64,
+    max_epochs : u32, 
+    rng : ChaChaRng
 }

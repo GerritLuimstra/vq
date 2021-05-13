@@ -46,14 +46,10 @@ impl GeneralLearningVectorQuantization {
         }
     }
 
-    /// Fits the General Learning Vector Quantization model on the given data
+    ///
+    /// Checks if the required constraints are met for the model fitting stage
     /// 
-    /// # Arguments
-    /// 
-    /// * `data`   The data to adapt the prototypes on
-    /// * `labels` The labels of the samples
-    /// 
-    pub fn fit (&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
+    fn check_fit_constraints(&mut self, data : &Vec<Array1<f64>>) {
 
         // Compute the total amount of prototypes given
         let mut total_prototypes = 0;
@@ -67,6 +63,23 @@ impl GeneralLearningVectorQuantization {
 
         // Assert that the model has not been fit yet
         assert!(self.prototypes.len() == 0, "This model has already been fit.");
+    
+    }
+
+    ///
+    /// Checks if the required constraints are met for the prediction stage
+    /// 
+    fn check_predict_constraints(&mut self, data : &Vec<Array1<f64>>) {
+        assert!(data.len() > 0, "There are no data samples given.");
+        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
+        assert!(self.prototypes[0].vector.len() == data[0].len(), 
+                "Data must be the same sized as was used in fit!");
+    }
+
+    ///
+    /// Sets up the required data before the model is fit
+    /// 
+    fn setup(&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
 
         // Setup the prototypes by grabbing the respective amount of vectors from the data
         // based on the amount of prototypes specified for that class
@@ -92,6 +105,24 @@ impl GeneralLearningVectorQuantization {
                 self.prototypes.push(selected_prototype);
             }
         }
+
+    }
+
+    /// Fits the General Learning Vector Quantization model on the given data
+    /// 
+    /// # Arguments
+    /// 
+    /// * `data`   The data to adapt the prototypes on
+    /// * `labels` The labels of the samples
+    /// 
+    pub fn fit (&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
+
+        // Check if the required constraints are present
+        self.check_fit_constraints(&data);
+
+        // Perform the required setup:
+        // Initialize the prototypes
+        self.setup(&data, &labels);
 
         for _epoch in 1 .. self.max_epochs + 1 {
 
@@ -157,17 +188,16 @@ impl GeneralLearningVectorQuantization {
     /// 
     /// * `data` The data to obtain the cluster labels for
     /// 
-    pub fn predict(&self, data : &Vec<Array1<f64>>) -> Vec<String> {
+    pub fn predict(&mut self, data : &Vec<Array1<f64>>) -> Vec<String> {
 
-        // Check for valid input
-        assert!(data.len() > 0, "There are no data samples given.");
-        assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
-        assert!(self.prototypes[0].vector.len() == data[0].len(), 
-                "Data must be the same sized as was used in fit!");
+        // Check predict constraints
+        self.check_predict_constraints(&data);
 
         let mut cluster_labels = Vec::<String>::new();
 
         for data_sample in data {
+
+            // TODO: Make this also work with the custom functions.
 
             // Obtain the closest prototype
             let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
