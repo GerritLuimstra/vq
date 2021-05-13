@@ -1,7 +1,7 @@
 use super::Prototype;
 use super::GeneralLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
-use super::helpers::{euclidean_distance, find_closest_prototype};
+use super::helpers::{euclidean_distance, find_closest_prototype, shuffle_data_and_labels};
 
 use rand::Rng;
 use ndarray::Array1;
@@ -127,17 +127,7 @@ impl GeneralLearningVectorQuantization {
         for _epoch in 1 .. self.max_epochs + 1 {
 
             // Shuffle the data to prevent artifacts during training
-            // We should be careful to shuffle the labels and data in the same matter
-            let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
-            shuffled_indices.shuffle(&mut self.rng);
-
-            // Create shuffled (and cloned) data based on the shuffled indices
-            let mut shuffled_data   = vec![];
-            let mut shuffled_labels = vec![];
-            for index in shuffled_indices {
-                shuffled_data.push(data[index].clone());
-                shuffled_labels.push(labels[index].clone());
-            }
+            let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
 
             // Iterate over the shuffled data and update the closest prototype
             for (index, data_sample) in shuffled_data.iter().enumerate() {

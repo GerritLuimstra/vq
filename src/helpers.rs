@@ -1,5 +1,7 @@
 use ndarray::Array1;
 use super::Prototype;
+use rand::seq::SliceRandom;
+use rand_chacha::ChaChaRng;
 
 /// Simple euclidean distance between two vectors
 /// 
@@ -64,6 +66,7 @@ pub fn find_closest_prototype (prototypes : &Vec<Prototype>, sample : &Array1<f6
 /// * `label`  The label of the sample
 /// * `find_closest_matching` Determines whether the closest matching 
 /// or non-matching prototype is to be found.
+/// 
 pub fn find_closest_prototype_matched (prototypes: &Vec<Prototype>, 
                                     sample : &Array1<f64>, 
                                     label: &String,
@@ -101,4 +104,30 @@ pub fn find_closest_prototype_matched (prototypes: &Vec<Prototype>,
     }
 
     closest_prototype_index
+}
+
+/// Shuffles the given data and labels in the same way,
+/// so that the labels still point to the right data sample.
+/// 
+/// # Arguments
+/// 
+/// * `data` The data to be shuffled
+/// * `labels` The labels of the data to be shuffled
+/// * `rng`  The random number generator to use for the shuffling
+/// 
+pub fn shuffle_data_and_labels (data : &Vec<Array1<f64>>, labels : &Vec<String>, rng: &mut ChaChaRng) -> (Vec<Array1<f64>>, Vec<String>) {
+    
+    // We should be careful to shuffle the labels and data in the same matter
+    let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
+    shuffled_indices.shuffle(rng);
+
+    // Create shuffled (and cloned) data based on the shuffled indices
+    let mut shuffled_data   = vec![];
+    let mut shuffled_labels = vec![];
+    for index in shuffled_indices {
+        shuffled_data.push(data[index].clone());
+        shuffled_labels.push(labels[index].clone());
+    }
+
+    (shuffled_data, shuffled_labels)
 }
