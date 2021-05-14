@@ -1,14 +1,12 @@
 use super::Prototype;
 use super::GeneralMatrixLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
-use super::helpers::{euclidean_distance, find_closest_prototype, shuffle_data_and_labels};
-use super::helpers::generalized_distance;
+use super::helpers::{generalized_distance, find_closest_prototype, shuffle_data_and_labels};
 
 use rand::Rng;
 use ndarray::Array1;
 use ndarray::Array2;
 use ndarray::Array;
-use ndarray::IxDyn;
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
@@ -96,7 +94,6 @@ impl GeneralMatrixLearningVectorQuantization {
 
         // Normalize omega by dividing through sqrt(`diagonal_sum`)
         omega / diagonal_sum.sqrt()
-
     }
 
     ///
@@ -212,7 +209,8 @@ impl GeneralMatrixLearningVectorQuantization {
                 // Perform the complete update rules
                 let new_w_j   = w_j.vector.clone() - self.learning_rate * deriv_w_j;
                 let new_w_k   = w_k.vector.clone() - self.learning_rate * deriv_w_k;
-                let new_omega = omega.clone()      - self.learning_rate * omega_gradient;
+                // NOTE: The learning rate for the omega matrix is an order of magnitude smaller
+                let new_omega = omega.clone()      - self.learning_rate * 0.1 * omega_gradient;
                 
                 // Update the prototypes
                 self.prototypes[w_j_index].vector = new_w_j;
@@ -222,7 +220,6 @@ impl GeneralMatrixLearningVectorQuantization {
                 // this is to prevent learning degeneration
                 self.omega = Some(self.normalize_omega(&new_omega));
             }
-
         }
     }
 
@@ -246,7 +243,7 @@ impl GeneralMatrixLearningVectorQuantization {
 
             // Obtain the closest prototype
             let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, Some(self.omega.as_ref().unwrap()));
-            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
+            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap();
 
             // Add the cluster label to the list
             cluster_labels.push(closest_prototype.name.clone());

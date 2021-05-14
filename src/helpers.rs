@@ -37,14 +37,13 @@ pub fn euclidean_distance (vec1 : &Array1<f64>, vec2 : &Array1<f64>) -> f64 {
 pub fn generalized_distance(omega: &Array2<f64>, vec1 : &Array1<f64>, vec2 : &Array1<f64>) -> f64 {
 
     // Obtain the Lambda = Omega^T Omega matrix
-    let Lambda = omega.t().dot(&omega.to_owned());
+    let lambda = omega.t().dot(&omega.to_owned());
 
     // Obtain the vector difference
     let difference = vec1 - vec2;
 
     // Compute the distance
-    difference.t().dot(&Lambda).dot(&difference)
-
+    difference.t().dot(&lambda).dot(&difference)
 }
 
 
@@ -66,7 +65,7 @@ pub fn find_closest_prototype (prototypes : &Vec<Prototype>, sample : &Array1<f6
         // Compute the distance based on whether an adaptive matrix is given
         let distance = match omega {
             None        => euclidean_distance(&prototype.vector, sample),
-            Some(omega) => generalized_distance(omega, &prototype.vector, sample)
+            Some(omega) => generalized_distance(omega, sample, &prototype.vector)
         };
 
         // Update the current closest, if we have found a one that is closer
@@ -106,7 +105,7 @@ pub fn find_closest_prototype_matched (prototypes: &Vec<Prototype>,
         // Compute the distance based on whether an adaptive matrix is given
         let distance = match omega {
             None        => euclidean_distance(&prototype.vector, sample),
-            Some(omega) => generalized_distance(omega, &prototype.vector, sample)
+            Some(omega) => generalized_distance(omega, sample, &prototype.vector)
         };
 
         // Find the closest prototype with the same class
