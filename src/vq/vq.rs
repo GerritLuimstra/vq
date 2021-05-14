@@ -113,7 +113,7 @@ impl VectorQuantization {
             for data_sample in cloned_data.iter() {
 
                 // Find the closest prototype to the data point
-                let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
+                let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, None);
                 let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
                 // Compute the new prototype
@@ -144,7 +144,7 @@ impl VectorQuantization {
         for data_sample in data {
 
             // Obtain the closest prototype
-            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
+            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, None);
             let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
             // Add the cluster label to the list

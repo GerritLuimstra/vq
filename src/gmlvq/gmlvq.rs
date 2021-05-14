@@ -1,10 +1,14 @@
 use super::Prototype;
 use super::GeneralMatrixLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
-use super::helpers::{euclidean_distance, find_closest_prototype};
+use super::helpers::{euclidean_distance, find_closest_prototype, shuffle_data_and_labels};
+use super::helpers::generalized_distance;
 
 use rand::Rng;
 use ndarray::Array1;
+use ndarray::Array2;
+use ndarray::Array;
+use ndarray::IxDyn;
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
@@ -79,6 +83,23 @@ impl GeneralMatrixLearningVectorQuantization {
     }
 
     ///
+    /// Normalizes the matrix omega such that omega^T omega contains to have a diagonal sum of 1.
+    /// This prevents learning degeneration.
+    /// 
+    fn normalize_omega(&self, omega: &Array2<f64>) -> Array2<f64> {
+
+        // Compute Omega^T Omega
+        let combined = omega.t().dot(omega);
+
+        // Compute the sum of the diagonal
+        let diagonal_sum = combined.diag().sum();
+
+        // Normalize omega by dividing through sqrt(`diagonal_sum`)
+        omega / diagonal_sum.sqrt()
+
+    }
+
+    ///
     /// Sets up the required data before the model is fit
     /// 
     fn setup(&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
@@ -108,6 +129,10 @@ impl GeneralMatrixLearningVectorQuantization {
             }
         }
 
+        // Setup the n by n adaptive metric matrix Omega
+        // and normalize omega such that Omega^T Omega has diagonal elements that sum to one
+        let n = self.prototypes[0].vector.dim();
+        self.omega = Some(self.normalize_omega(&Array::eye(n)));
     }
 
     /// Fits the General Matrix Learning Vector Quantization model on the given data
@@ -127,7 +152,77 @@ impl GeneralMatrixLearningVectorQuantization {
         self.setup(&data, &labels);
 
         for _epoch in 1 .. self.max_epochs + 1 {
-            // TODO: Implement.
+
+            // Shuffle the data to prevent artifacts during training
+            let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
+
+            // Iterate over the shuffled data and update the closest prototype
+            for (index, data_sample) in shuffled_data.iter().enumerate() {
+
+                // Obtain the corresponding label
+                let label = &shuffled_labels[index];
+
+                // Compute Lambda = Omega^T Omega
+                let omega : &Array2<f64> = self.omega.as_ref().unwrap();
+                let lambda = omega.t().dot(&omega.to_owned());
+
+                // Find the indices of w_J and w_K, which are the closest matching and closest non-matching prototype respectively
+                let w_j_index = find_closest_prototype_matched(
+                    &self.prototypes, &data_sample,
+                    &label, true, Some(omega)
+                );
+                let w_k_index = find_closest_prototype_matched(
+                    &self.prototypes, &data_sample, 
+                    &label, false, Some(omega)
+                );
+                
+                // From the indices, obtain the corresponding prototypes
+                let w_j = self.prototypes.get(w_j_index).unwrap();
+                let w_k = self.prototypes.get(w_k_index).unwrap();
+
+                // Compute the distances to the closest correct and wrong prototype
+                let d_j = generalized_distance(omega, data_sample, &w_j.vector);
+                let d_k = generalized_distance(omega, data_sample, &w_k.vector);
+
+                // Compute mu_plus and mu_minus (the derivative of mu with respect to the closest and furthers prototype distance)
+                let mu_plus  = 2.0 * d_k / (d_k + d_j).powf(2.0);
+                let mu_minus = 2.0 * d_j / (d_k + d_j).powf(2.0);
+
+                // TODO: Replace the 1 with a general / sigmoid function
+                let deriv_w_j =   2.0 * 1.0 * mu_plus  * lambda.dot(&(data_sample - w_j.vector.to_owned()));
+                let deriv_w_k = - 2.0 * 1.0 * mu_minus * lambda.dot(&(data_sample - w_k.vector.to_owned()));
+                
+                // Compute the differences with the samples and the corresponding vectors
+                // and their versions dotted with Omega
+                let diff_j = data_sample - w_j.vector.to_owned();
+                let diff_k = data_sample - w_k.vector.to_owned();
+                let omega_diff_j = omega.dot(&diff_j);
+                let omega_diff_k = omega.dot(&diff_k);
+
+                let n = omega.dim().0;
+                let mut omega_gradient : Array2<f64> = Array::zeros((n, n));
+                for l in 0 .. n {
+                    for m in 0 .. n {
+                        omega_gradient[[l, m]] = mu_plus * diff_j[m] * omega_diff_j[l] - mu_minus * diff_k[m] * omega_diff_k[l];
+                    }
+                }
+                // TODO: Replace the 1 with a general / sigmoid function
+                let omega_gradient = - 2.0 * 1.0 * omega_gradient;
+
+                // Perform the complete update rules
+                let new_w_j   = w_j.vector.clone() - self.learning_rate * deriv_w_j;
+                let new_w_k   = w_k.vector.clone() - self.learning_rate * deriv_w_k;
+                let new_omega = omega.clone()      - self.learning_rate * omega_gradient;
+                
+                // Update the prototypes
+                self.prototypes[w_j_index].vector = new_w_j;
+                self.prototypes[w_k_index].vector = new_w_k;
+
+                // Normalize omega such that Omega^T Omega has diagonal elements that sum to one
+                // this is to prevent learning degeneration
+                self.omega = Some(self.normalize_omega(&new_omega));
+            }
+
         }
     }
 
@@ -146,7 +241,15 @@ impl GeneralMatrixLearningVectorQuantization {
         let mut cluster_labels = Vec::<String>::new();
 
         for data_sample in data {
-            // TODO: Implement.
+
+            // TODO: Make this also work with the custom functions.
+
+            // Obtain the closest prototype
+            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, Some(self.omega.as_ref().unwrap()));
+            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
+
+            // Add the cluster label to the list
+            cluster_labels.push(closest_prototype.name.clone());
         }
 
         cluster_labels

@@ -137,10 +137,10 @@ impl GeneralLearningVectorQuantization {
                 // Find the closest matching and non matching prototypes
                 let closest_matching_prototype_index     = find_closest_prototype_matched(&self.prototypes,
                                                                                           &data_sample, 
-                                                                                          &label, true);
+                                                                                          &label, true, None);
                 let closest_non_matching_prototype_index = find_closest_prototype_matched(&self.prototypes,
                                                                                           &data_sample, 
-                                                                                          &label, false);
+                                                                                          &label, false, None);
                 let closest_matching_prototype     = self.prototypes.get(closest_matching_prototype_index).unwrap();
                 let closest_non_matching_prototype = self.prototypes.get(closest_non_matching_prototype_index).unwrap();
 
@@ -190,7 +190,7 @@ impl GeneralLearningVectorQuantization {
             // TODO: Make this also work with the custom functions.
 
             // Obtain the closest prototype
-            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample);
+            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, None);
             let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
             // Add the cluster label to the list

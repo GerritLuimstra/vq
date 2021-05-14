@@ -1,4 +1,4 @@
-use ndarray::{Array1, ArrayD};
+use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
 use rand_chacha::ChaChaRng;
 
@@ -128,7 +128,7 @@ pub struct GeneralLearningVectorQuantization {
 pub struct GeneralMatrixLearningVectorQuantization {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
-    omega: Option<ArrayD<f64>>,
+    omega: Option<Array2<f64>>,
     learning_rate : f64,
     max_epochs : u32, 
     rng : ChaChaRng
