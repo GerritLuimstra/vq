@@ -134,7 +134,7 @@ impl GeneralMatrixLearningVectorQuantization {
     /// 
     /// # Arguments
     /// 
-    /// * `data`   The data to adapt the prototypes on
+    /// * `data`   The data to adapt the prototypes and the learned adaptive distance metric on
     /// * `labels` The labels of the samples
     /// 
     pub fn fit (&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
@@ -225,7 +225,7 @@ impl GeneralMatrixLearningVectorQuantization {
     }
 
     /// Assign cluster labels (i.e. predict) to the data given data
-    /// based on the learned prototype vectors
+    /// based on the learned prototype vectors and the learned adaptive distance metric
     /// 
     /// # Arguments
     /// 
