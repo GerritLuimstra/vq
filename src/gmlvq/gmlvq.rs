@@ -14,9 +14,7 @@ use std::collections::BTreeMap;
 
 impl GeneralMatrixLearningVectorQuantization {
 
-    /// Constructs a new General Learning Vector Quantization model
-    /// 
-    /// TODO: Fix documentation.
+    /// Constructs a new General Matrix Learning Vector Quantization model
     /// 
     /// # Arguments
     /// 
@@ -260,6 +258,7 @@ impl GeneralMatrixLearningVectorQuantization {
     /// Simple getter for the prototype clusters
     /// 
     /// NOTE: This projects the prototypes using Lambda!
+    /// 
     pub fn prototypes(&self) -> Vec<Prototype> {
 
         // Compute Lambda = Omega^T Omega

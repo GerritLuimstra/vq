@@ -114,12 +114,18 @@ pub struct GeneralLearningVectorQuantization {
 
 /// The General Matrix Learning Vector Quantization (GMLVQ) model
 ///
-/// TODO: Write documentation.
+/// This struct and its methods provide an implementation of the GMLVQ algorithm using stochastic gradient descent.
+/// By introducing a full matrix of relevance factors in the distance measure, correlations between different features,
+/// and their importance for the classification scheme can be taken into account.
+///
+/// The implementation is entirely based on the following paper [[1]](http://www.cs.rug.nl/~biehl/Preprints/gmlvq.pdf).
+///
+/// This specific implementation allows for a variable number of prototypes per class.
 ///
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
 /// * `prototypes`     A vector of the prototypes (initially empty)
-/// * `omega`  The learning rate for the update step of the prototypes
+/// * `omega`          A matrix used to compute the adaptive relevance matrix Lambda = tranpose(Omega).dot(Omega)
 /// * `learning_rate`  The learning rate for the update step of the prototypes
 /// * `max_epochs`     The amount of epochs to run
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
