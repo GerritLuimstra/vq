@@ -5,7 +5,7 @@ Currently supports:
 - Vector Quantization (```vq::VectorQuantization```)
 - Learning Vector Quantization (```vq::LearningVectorQuantization```)
 - General Learning Vector Quantization (```vq::GeneralLearningVectorQuantization```)
-- General Matrix Learning Vector Quantization (```vq::GeneralLearningVectorQuantization```)
+- General Matrix Learning Vector Quantization (```vq::GeneralMatrixLearningVectorQuantization```)
 
 ## Documentation
 To access the documentation simply run:
