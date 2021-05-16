@@ -18,7 +18,7 @@ pub fn euclidean_distance (vec1 : &Array1<f64>, vec2 : &Array1<f64>) -> f64 {
     // Compute the sum of the differences
     let mut sum = 0.0;
     for index in 0 .. vec1.len() {
-        sum += (vec1[index] - vec2[index]).powf(2.0);
+        sum += (vec1[index] - vec2[index]).powi(2);
     }
 
     // Take the square root

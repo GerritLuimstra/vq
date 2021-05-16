@@ -92,7 +92,7 @@ impl GeneralMatrixLearningVectorQuantization {
         // Compute the sum of the diagonal
         let diagonal_sum = combined.diag().sum();
 
-        // Normalize omega by dividing through sqrt(`diagonal_sum`)
+        // Normalize omega by dividing the diagonal by sqrt(`diagonal_sum`)
         omega / diagonal_sum.sqrt()
     }
 
@@ -182,12 +182,13 @@ impl GeneralMatrixLearningVectorQuantization {
                 let d_k = generalized_distance(omega, data_sample, &w_k.vector);
 
                 // Compute mu_plus and mu_minus (the derivative of mu with respect to the closest and furthers prototype distance)
-                let mu_plus  = 2.0 * d_k / (d_k + d_j).powf(2.0);
-                let mu_minus = 2.0 * d_j / (d_k + d_j).powf(2.0);
+                let norm = (d_k + d_j).powi(2);
+                let mu_plus  = 2.0 * d_k / norm;
+                let mu_minus = 2.0 * d_j / norm;
 
-                // TODO: Replace the 1 with a general / sigmoid function
+                // TODO: Replace the 1.0 with a general / sigmoid function
                 let deriv_w_j =   2.0 * 1.0 * mu_plus  * lambda.dot(&(data_sample - w_j.vector.to_owned()));
-                let deriv_w_k = - 2.0 * 1.0 * mu_minus * lambda.dot(&(data_sample - w_k.vector.to_owned()));
+                let deriv_w_k =   2.0 * 1.0 * mu_minus * lambda.dot(&(data_sample - w_k.vector.to_owned()));
                 
                 // Compute the differences with the samples and the corresponding vectors
                 // and their versions dotted with Omega
@@ -196,6 +197,7 @@ impl GeneralMatrixLearningVectorQuantization {
                 let omega_diff_j = omega.dot(&diff_j);
                 let omega_diff_k = omega.dot(&diff_k);
 
+                // Compute the gradient
                 let n = omega.dim().0;
                 let mut omega_gradient : Array2<f64> = Array::zeros((n, n));
                 for l in 0 .. n {
@@ -203,14 +205,15 @@ impl GeneralMatrixLearningVectorQuantization {
                         omega_gradient[[l, m]] = mu_plus * diff_j[m] * omega_diff_j[l] - mu_minus * diff_k[m] * omega_diff_k[l];
                     }
                 }
-                // TODO: Replace the 1 with a general / sigmoid function
+
+                // TODO: Replace the 1.0 with a general / sigmoid function
                 let omega_gradient = - 2.0 * 1.0 * omega_gradient;
 
                 // Perform the complete update rules
-                let new_w_j   = w_j.vector.clone() - self.learning_rate * deriv_w_j;
+                let new_w_j   = w_j.vector.clone() + self.learning_rate * deriv_w_j;
                 let new_w_k   = w_k.vector.clone() - self.learning_rate * deriv_w_k;
                 // NOTE: The learning rate for the omega matrix is an order of magnitude smaller
-                let new_omega = omega.clone()      - self.learning_rate * 0.1 * omega_gradient;
+                let new_omega = omega.clone()      + self.learning_rate * 0.1 * omega_gradient;
                 
                 // Update the prototypes
                 self.prototypes[w_j_index].vector = new_w_j;
@@ -237,7 +240,7 @@ impl GeneralMatrixLearningVectorQuantization {
 
         let mut cluster_labels = Vec::<String>::new();
 
-        for data_sample in data {
+        for data_sample in data.iter() {
 
             // TODO: Make this also work with the custom functions.
 
@@ -252,9 +255,58 @@ impl GeneralMatrixLearningVectorQuantization {
         cluster_labels
     }
 
+
+
     /// Simple getter for the prototype clusters
-    pub fn prototypes(&self) -> &Vec<Prototype> {
-        &self.prototypes
+    /// 
+    /// NOTE: This projects the prototypes using Lambda!
+    pub fn prototypes(&self) -> Vec<Prototype> {
+
+        // Compute Lambda = Omega^T Omega
+        let omega : &Array2<f64> = self.omega.as_ref().unwrap();
+        let lambda = omega.t().dot(&omega.to_owned());
+
+        // Setup the new project samples
+        let mut projected_prototypes = Vec::<Prototype>::new();
+
+        for prototype in self.prototypes.iter() {
+
+            // Clone the prototype
+            let mut prototype = prototype.clone();
+
+            // Project the prototype using Lambda
+            prototype.vector = lambda.dot(&prototype.vector);
+
+            projected_prototypes.push(prototype);
+        }
+
+        projected_prototypes
+    }
+
+    /// Projects the data based on learned Lambda = Omega^T Omega matrix
+    /// 
+    /// # Arguments
+    /// 
+    /// * `data` The data to project according to the learned matrix
+    /// 
+    pub fn project(&self, data : &Vec<Array1<f64>>) -> Vec::<Array1<f64>> {
+
+        // Compute Lambda = Omega^T Omega
+        let omega : &Array2<f64> = self.omega.as_ref().unwrap();
+        let lambda = omega.t().dot(&omega.to_owned());
+
+        // Setup the new project samples
+        let mut projected_samples = Vec::<Array1<f64>>::new();
+
+        for data_sample in data.iter() {
+
+            // Project the data using Lambda
+            let projected_sample : Array1<f64> = lambda.dot(&data_sample.clone());
+
+            projected_samples.push(projected_sample);
+        }
+
+        projected_samples
     }
 
 }

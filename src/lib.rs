@@ -21,7 +21,7 @@ mod gmlvq;
 /// * `vector`    The vector data of the prototype
 /// * `name`      The name of the vector (for readability only)
 /// 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Prototype {
     pub vector: Array1<f64>,
     pub name: String
