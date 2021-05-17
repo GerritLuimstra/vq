@@ -1,5 +1,6 @@
 use super::Prototype;
 use super::GeneralMatrixLearningVectorQuantization;
+use super::traits::TupledSchedulable;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{generalized_distance, find_closest_prototype, shuffle_data_and_labels};
 
@@ -22,13 +23,14 @@ impl GeneralMatrixLearningVectorQuantization {
     ///                    This BTreeMap should be provided as a reference and the algorithm will panic if there are classes
     ///                    in the data not present in this BTreeMap.
     ///                    A BTreeMap is used instead of a HashMap due to the ability of sorted keys, which is required for reproducability.
-    /// * `learning_rate`  The learning rate for the update step of the prototypes
+    /// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
+    ///                    Note: This time, we require two learning rates (one for the prototypes and one for the matrix) as a tuple
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
     pub fn new ( num_prototypes: BTreeMap<String, usize>,
-                 learning_rate: f64,
+                 initial_lr : (f64, f64),
                  max_epochs: u32,
                  seed: Option<u64> ) -> GeneralMatrixLearningVectorQuantization {
         
@@ -36,7 +38,8 @@ impl GeneralMatrixLearningVectorQuantization {
         GeneralMatrixLearningVectorQuantization {
             num_prototypes,
             omega: None,
-            learning_rate,
+            initial_lr,
+            lr_scheduler : |l_p, l_m, _, _| -> (f64, f64) { (l_p, l_m) },
             max_epochs, 
             rng: {
                 if seed != None {
@@ -146,7 +149,7 @@ impl GeneralMatrixLearningVectorQuantization {
         // Initialize the prototypes
         self.setup(&data, &labels);
 
-        for _epoch in 1 .. self.max_epochs + 1 {
+        for epoch in 1 .. self.max_epochs + 1 {
 
             // Shuffle the data to prevent artifacts during training
             let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
@@ -207,11 +210,13 @@ impl GeneralMatrixLearningVectorQuantization {
                 // TODO: Replace the 1.0 with a general / sigmoid function
                 let omega_gradient = - 2.0 * 1.0 * omega_gradient;
 
+                // Compute the learning rates
+                let learning_rates = (self.lr_scheduler)(self.initial_lr.0, self.initial_lr.1, epoch, self.max_epochs);
+
                 // Perform the complete update rules
-                let new_w_j   = w_j.vector.clone() + self.learning_rate * deriv_w_j;
-                let new_w_k   = w_k.vector.clone() - self.learning_rate * deriv_w_k;
-                // NOTE: The learning rate for the omega matrix is an order of magnitude smaller
-                let new_omega = omega.clone()      + self.learning_rate * 0.1 * omega_gradient;
+                let new_w_j   = w_j.vector.clone() + learning_rates.0 * deriv_w_j;
+                let new_w_k   = w_k.vector.clone() - learning_rates.0 * deriv_w_k;
+                let new_omega = omega.clone()      + learning_rates.1 * omega_gradient;
                 
                 // Update the prototypes
                 self.prototypes[w_j_index].vector = new_w_j;
@@ -306,6 +311,22 @@ impl GeneralMatrixLearningVectorQuantization {
         }
 
         projected_samples
+    }
+
+}
+
+impl TupledSchedulable for GeneralMatrixLearningVectorQuantization {
+
+    /// Updates the learning rate scheduler of the model this trait is implemented for
+    /// 
+    /// # Arguments
+    /// 
+    /// * `scheduler` A function that takes in four arguments of the form
+    ///               (base_learning_rate_protototype, base_learning_rate_matrix, current_epoch, max_epochs) as parameters
+    ///               The algorithm will insert these arguments when the learning rate is to be calculated.
+    ///
+    fn set_learning_rate_scheduler (&mut self, scheduler : fn(f64, f64, u32, u32) -> (f64, f64)) {
+        self.lr_scheduler = scheduler;
     }
 
 }
