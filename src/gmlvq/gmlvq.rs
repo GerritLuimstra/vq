@@ -2,7 +2,7 @@ use super::Prototype;
 use super::GeneralMatrixLearningVectorQuantization;
 use super::traits::TupledSchedulable;
 use super::helpers::find_closest_prototype_matched;
-use super::helpers::{generalized_distance, find_closest_prototype, shuffle_data_and_labels};
+use super::helpers::{generalized_distance, find_closest_prototype};
 
 use rand::Rng;
 use ndarray::Array1;
@@ -151,14 +151,17 @@ impl GeneralMatrixLearningVectorQuantization {
 
         for epoch in 1 .. self.max_epochs + 1 {
 
-            // Shuffle the data to prevent artifacts during training
-            let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
+            // We should be careful to shuffle the labels and data in the same matter
+            let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
+            shuffled_indices.shuffle(&mut self.rng);
 
             // Iterate over the shuffled data and update the closest prototype
-            for (index, data_sample) in shuffled_data.iter().enumerate() {
+            for data_index in shuffled_indices.iter() {
 
-                // Obtain the corresponding label
-                let label = &shuffled_labels[index];
+                // Setup the required variables
+                let data_index = *data_index;
+                let data_label  = &labels[data_index];
+                let data_sample = &data[data_index];
 
                 // Compute Lambda = Omega^T Omega
                 let omega : &Array2<f64> = self.omega.as_ref().unwrap();
@@ -167,11 +170,11 @@ impl GeneralMatrixLearningVectorQuantization {
                 // Find the indices of w_J and w_K, which are the closest matching and closest non-matching prototype respectively
                 let w_j_index = find_closest_prototype_matched(
                     &self.prototypes, &data_sample,
-                    &label, true, Some(omega)
+                    &data_label, true, Some(omega)
                 );
                 let w_k_index = find_closest_prototype_matched(
                     &self.prototypes, &data_sample, 
-                    &label, false, Some(omega)
+                    &data_label, false, Some(omega)
                 );
                 
                 // From the indices, obtain the corresponding prototypes

@@ -1,7 +1,6 @@
 use super::Prototype;
 use super::LearningVectorQuantization;
 use super::helpers::find_closest_prototype;
-use super::helpers::shuffle_data_and_labels;
 use super::traits::Schedulable;
 
 use rand::Rng;
@@ -128,11 +127,17 @@ impl LearningVectorQuantization {
 
         for epoch in 1 .. self.max_epochs + 1 {
 
-            // Shuffle the data to prevent artifacts during training
-            let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
+            // We should be careful to shuffle the labels and data in the same matter
+            let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
+            shuffled_indices.shuffle(&mut self.rng);
 
             // Iterate over the shuffled data and update the closest prototype
-            for (index, data_sample) in shuffled_data.iter().enumerate() {
+            for data_index in shuffled_indices.iter() {
+
+                // Setup the required variables
+                let data_index = *data_index;
+                let data_label  = &labels[data_index];
+                let data_sample = &data[data_index];
 
                 // Find the closest prototype to the data point
                 let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, None);
@@ -148,7 +153,7 @@ impl LearningVectorQuantization {
                 // if the classes of the data sample and the closest prototype match and move it
                 // further away otherwise.
                 let new_prototype;
-                if shuffled_labels[index] == closest_prototype.name {
+                if *data_label == closest_prototype.name {
                     new_prototype = closest_prototype.vector.clone() + learning_rate * difference;
                 } else {
                     new_prototype = closest_prototype.vector.clone() - learning_rate * difference;

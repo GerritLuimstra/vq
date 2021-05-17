@@ -1,7 +1,7 @@
 use super::Prototype;
 use super::GeneralLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
-use super::helpers::{euclidean_distance, find_closest_prototype, shuffle_data_and_labels};
+use super::helpers::{euclidean_distance, find_closest_prototype};
 use super::traits::Schedulable;
 
 use rand::Rng;
@@ -128,21 +128,25 @@ impl GeneralLearningVectorQuantization {
 
         for epoch in 1 .. self.max_epochs + 1 {
 
-            // Shuffle the data to prevent artifacts during training
-            let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
+            // We should be careful to shuffle the labels and data in the same matter
+            let mut shuffled_indices : Vec<usize> = (0 .. data.len()).collect();
+            shuffled_indices.shuffle(&mut self.rng);
 
             // Iterate over the shuffled data and update the closest prototype
-            for (index, data_sample) in shuffled_data.iter().enumerate() {
+            for data_index in shuffled_indices.iter() {
 
-                let label = &shuffled_labels[index];
+                // Setup the required variables
+                let data_index = *data_index;
+                let data_label  = &labels[data_index];
+                let data_sample = &data[data_index];
 
                 // Find the closest matching and non matching prototypes
                 let closest_matching_prototype_index     = find_closest_prototype_matched(&self.prototypes,
                                                                                           &data_sample, 
-                                                                                          &label, true, None);
+                                                                                          &data_label, true, None);
                 let closest_non_matching_prototype_index = find_closest_prototype_matched(&self.prototypes,
                                                                                           &data_sample, 
-                                                                                          &label, false, None);
+                                                                                          &data_label, false, None);
                 let closest_matching_prototype     = self.prototypes.get(closest_matching_prototype_index).unwrap();
                 let closest_non_matching_prototype = self.prototypes.get(closest_non_matching_prototype_index).unwrap();
 
