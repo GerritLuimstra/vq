@@ -88,10 +88,10 @@ impl GeneralLearningVectorQuantization {
         for (class_name, num_prototypes) in self.num_prototypes.iter() {
 
             // Obtain all the data samples with the class 'class_name'
-            let mut data_samples_by_class = vec![];
+            let mut data_class_indices = vec![];
             for (index, sample_label) in labels.iter().enumerate() {
                 if sample_label == class_name {
-                    data_samples_by_class.push(data[index].clone());
+                    data_class_indices.push(index);
                 }
             }
 
@@ -99,8 +99,8 @@ impl GeneralLearningVectorQuantization {
             for _ in 0 .. *num_prototypes {
 
                 // Obtain a random prototype from the data samples by class and clone/own it
-                let selected_prototype = data_samples_by_class.choose(&mut self.rng).unwrap();
-                let selected_prototype = selected_prototype.clone();
+                let selected_prototype = *data_class_indices.choose(&mut self.rng).unwrap();
+                let selected_prototype = data[selected_prototype].clone();
                 let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
 
                 // Add the newly created prototypes to the prototype list
