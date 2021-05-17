@@ -2,10 +2,10 @@
 A fast and lightweight vector quantization library/toolkit entirely written in and for Rust
 
 Currently implements:
-- Vector Quantization ([1]) (```vq::VectorQuantization```)
-- Learning Vector Quantization([2]) (```vq::LearningVectorQuantization```)
-- General Learning Vector Quantization([3])(```vq::GeneralLearningVectorQuantization```)
-- General Matrix Learning Vector Quantization([4]) (```vq::GeneralMatrixLearningVectorQuantization```)
+- Vector Quantization (VQ, [1]) (```vq::VectorQuantization```)
+- Learning Vector Quantization (LVQ, [2]) (```vq::LearningVectorQuantization```)
+- General Learning Vector Quantization (GLVQ, [3])(```vq::GeneralLearningVectorQuantization```)
+- General Matrix Learning Vector Quantization (GMLVQ, [4]) (```vq::GeneralMatrixLearningVectorQuantization```)
 
 Each model supports access to the learned parameters, the ability to reproduce runs through a seeded RNG and the ability to set a custom learning rate scheduler.
 
