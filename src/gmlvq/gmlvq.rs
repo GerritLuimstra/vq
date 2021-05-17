@@ -269,6 +269,10 @@ impl GeneralMatrixLearningVectorQuantization {
     /// 
     pub fn prototypes(&self) -> Vec<Prototype> {
 
+        assert!(self.prototypes.len() > 0, 
+        "The model has not been fit yet. \n
+        There are no prototypes at this stage.");
+
         // Compute Lambda = Omega^T Omega
         let omega : &Array2<f64> = self.omega.as_ref().unwrap();
         let lambda = omega.t().dot(&omega.to_owned());
@@ -288,6 +292,29 @@ impl GeneralMatrixLearningVectorQuantization {
         }
 
         projected_prototypes
+    }
+
+    /// Simple getter for the Omega matrix
+    pub fn omega(&self) -> &Array2<f64> {
+
+        assert!(self.prototypes.len() > 0, 
+        "The model has not been fit yet. \n
+        Omega is not available yet at this stage.");
+
+        &self.omega.as_ref().unwrap()
+    }
+
+    /// Simple getter for the Lambda matrix
+    pub fn lambda(&self) -> Array2<f64> {
+
+        assert!(self.prototypes.len() > 0, 
+        "The model has not been fit yet. \n
+        Omega is not available yet at this stage.");
+
+        // Clone omega, so that we can return a copy
+        let omega = self.omega.clone().unwrap();
+
+        omega.dot(&omega)
     }
 
     /// Projects the data based on learned Lambda = Omega^T Omega matrix
