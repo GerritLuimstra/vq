@@ -1,5 +1,6 @@
 use super::Prototype;
 use super::VectorQuantization;
+use super::traits::Schedulable;
 use super::helpers::find_closest_prototype;
 
 use rand::Rng;
@@ -15,20 +16,21 @@ impl VectorQuantization {
     /// # Arguments
     /// 
     /// * `num_prototypes` The number of prototypes to use
-    /// * `learning_rate`  The learning rate for the update step of the prototypes
+    /// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
     pub fn new (num_prototypes: u32, 
-                learning_rate: f64,
+                initial_lr: f64,
                 max_epochs: u32, 
                 seed: Option<u64> ) -> VectorQuantization {
         
         // Setup the model
         VectorQuantization {
             num_prototypes: num_prototypes,
-            learning_rate: learning_rate,
+            initial_lr,
+            lr_scheduler : |initial_lr, _, _| -> f64 { initial_lr },
             max_epochs: max_epochs, 
             rng: {
                 if seed != None {
@@ -105,7 +107,7 @@ impl VectorQuantization {
         // Create a copy of the data, so we do not change the underlying data
         let mut cloned_data = data.clone();
 
-        for _epoch in 1 .. self.max_epochs + 1 {
+        for epoch in 1 .. self.max_epochs + 1 {
 
             // Shuffle the data to prevent artifacts during training
             cloned_data.shuffle(&mut self.rng);
@@ -116,9 +118,12 @@ impl VectorQuantization {
                 let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, None);
                 let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
 
+                // Obtain the current learning rate
+                let learning_rate = (self.lr_scheduler)(self.initial_lr, epoch, self.max_epochs);
+
                 // Compute the new prototype
                 let new_prototype = closest_prototype.vector.clone() 
-                                    + self.learning_rate *
+                                    + learning_rate *
                                     (data_sample - closest_prototype.vector.clone());
 
                 // Replace the old prototype
@@ -177,6 +182,21 @@ impl VectorQuantization {
     /// Simple getter for the prototype clusters
     pub fn prototypes(&self) -> &Vec<Prototype> {
         &self.prototypes
+    }
+
+}
+
+impl Schedulable for VectorQuantization {
+
+    /// Updates the learning rate scheduler
+    /// 
+    /// # Arguments
+    /// 
+    /// * `scheduler` A function that takes in three arguments of the form (initial_learning_rate, current epoch, max epochs)
+    ///               The algorithm will insert these arguments when the learning rate is to be calculated.
+    ///  
+    fn set_learning_rate_scheduler (&mut self, scheduler : fn(f64, u32, u32) -> f64) {
+        self.lr_scheduler = scheduler;
     }
 
 }

@@ -136,7 +136,7 @@ impl GeneralMatrixLearningVectorQuantization {
     /// 
     /// * `data`   The data to adapt the prototypes and the learned adaptive distance metric on
     /// * `labels` The labels of the samples
-    /// 
+    ///
     pub fn fit (&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
 
         // Check if the required constraints are present
@@ -185,8 +185,8 @@ impl GeneralMatrixLearningVectorQuantization {
                 let mu_minus = 2.0 * d_j / norm;
 
                 // TODO: Replace the 1.0 with a general / sigmoid function
-                let deriv_w_j =   2.0 * 1.0 * mu_plus  * lambda.dot(&(data_sample - w_j.vector.to_owned()));
-                let deriv_w_k =   2.0 * 1.0 * mu_minus * lambda.dot(&(data_sample - w_k.vector.to_owned()));
+                let deriv_w_j = 2.0 * 1.0 * mu_plus  * lambda.dot(&(data_sample - w_j.vector.to_owned()));
+                let deriv_w_k = 2.0 * 1.0 * mu_minus * lambda.dot(&(data_sample - w_k.vector.to_owned()));
                 
                 // Compute the differences with the samples and the corresponding vectors
                 // and their versions dotted with Omega

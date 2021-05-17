@@ -1,10 +1,3 @@
-use ndarray::{Array1, Array2};
-use std::collections::BTreeMap;
-use rand_chacha::ChaChaRng;
-
-mod helpers;
-mod prototype;
-
 // Link the required modules
 #[path = "vq/vq.rs"]
 mod vq;
@@ -14,6 +7,16 @@ mod lvq;
 mod glvq;
 #[path = "gmlvq/gmlvq.rs"]
 mod gmlvq;
+#[path = "traits/traits.rs"]
+pub mod traits;
+
+use ndarray::{Array1, Array2};
+use std::collections::BTreeMap;
+use rand_chacha::ChaChaRng;
+
+mod helpers;
+mod prototype;
+
 
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
 /// 
@@ -40,7 +43,9 @@ pub struct Prototype {
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use for the clustering
 /// * `prototypes`     A vector of the prototypes (initially empty)
-/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
+/// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
+///                    This function can be custom and receives: (base_learning_rate, current_epoch, max_epochs) as parameters
 /// * `max_epochs`     The amount of epochs to run
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
@@ -48,7 +53,8 @@ pub struct Prototype {
 pub struct VectorQuantization {
     num_prototypes : u32,
     prototypes : Vec<Prototype>,
-    learning_rate : f64,
+    initial_lr : f64,
+    lr_scheduler : fn(f64, u32, u32) -> f64,
     max_epochs : u32,
     rng : ChaChaRng
 }
@@ -71,7 +77,10 @@ pub struct VectorQuantization {
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
 /// * `prototypes`     A vector of the prototypes (initially empty)
-/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
+/// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
+///                    This function can be custom and receives: (base_learning_rate, current_epoch, max_epochs) as parameters
+///                    The default scheduler simply returns the initial learning rate every time
 /// * `max_epochs`     The amount of epochs to run
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
@@ -79,8 +88,9 @@ pub struct VectorQuantization {
 pub struct LearningVectorQuantization {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
-    learning_rate : f64,
-    max_epochs : u32, 
+    initial_lr : f64,
+    lr_scheduler : fn(f64, u32, u32) -> f64,
+    max_epochs : u32,
     rng : ChaChaRng
 }
 
@@ -99,7 +109,10 @@ pub struct LearningVectorQuantization {
 /// # Properties
 /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
 /// * `prototypes`     A vector of the prototypes (initially empty)
-/// * `learning_rate`  The learning rate for the update step of the prototypes
+/// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
+/// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
+///                    This function can be custom and receives: (base_learning_rate, current_epoch, max_epochs) as parameters
+///                    The default scheduler simply returns the initial learning rate every time
 /// * `max_epochs`     The amount of epochs to run
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
@@ -107,7 +120,8 @@ pub struct LearningVectorQuantization {
 pub struct GeneralLearningVectorQuantization {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
-    learning_rate : f64,
+    initial_lr : f64,
+    lr_scheduler : fn(f64, u32, u32) -> f64,
     max_epochs : u32, 
     rng : ChaChaRng
 }
@@ -135,7 +149,7 @@ pub struct GeneralMatrixLearningVectorQuantization {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
     omega: Option<Array2<f64>>,
-    learning_rate : f64,
+    learning_rate: f64,
     max_epochs : u32, 
     rng : ChaChaRng
 }

@@ -2,6 +2,7 @@ use super::Prototype;
 use super::GeneralLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{euclidean_distance, find_closest_prototype, shuffle_data_and_labels};
+use super::traits::Schedulable;
 
 use rand::Rng;
 use ndarray::Array1;
@@ -20,20 +21,21 @@ impl GeneralLearningVectorQuantization {
     ///                    This BTreeMap should be provided as a reference and the algorithm will panic if there are classes
     ///                    in the data not present in this BTreeMap.
     ///                    A BTreeMap is used instead of a HashMap due to the ability of sorted keys, which is required for reproducability.
-    /// * `learning_rate`  The learning rate for the update step of the prototypes
+    /// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
     pub fn new ( num_prototypes: BTreeMap<String, usize>,
-                 learning_rate: f64,
+                 initial_lr: f64,
                  max_epochs: u32,
                  seed: Option<u64> ) -> GeneralLearningVectorQuantization {
         
         // Setup the model
         GeneralLearningVectorQuantization {
             num_prototypes,
-            learning_rate,
+            initial_lr,
+            lr_scheduler : |initial_lr, _, _| -> f64 { initial_lr },
             max_epochs, 
             rng: {
                 if seed != None {
@@ -124,7 +126,7 @@ impl GeneralLearningVectorQuantization {
         // Initialize the prototypes
         self.setup(&data, &labels);
 
-        for _epoch in 1 .. self.max_epochs + 1 {
+        for epoch in 1 .. self.max_epochs + 1 {
 
             // Shuffle the data to prevent artifacts during training
             let (shuffled_data, shuffled_labels) = shuffle_data_and_labels(&data, &labels, &mut self.rng);
@@ -160,9 +162,12 @@ impl GeneralLearningVectorQuantization {
                 let matching_derivative     =  - (f_deriv) * (4.0 * d2) / ((d1 + d2) * (d1 + d2)) * match_difference;
                 let non_matching_derivative =    (f_deriv) * (4.0 * d1) / ((d1 + d2) * (d1 + d2)) * non_match_difference;
 
+                // Obtain the current learning rate
+                let learning_rate = (self.lr_scheduler)(self.initial_lr, epoch, self.max_epochs);
+
                 // Perform the complete update rules
-                let new_matching_prototype     = closest_matching_prototype.vector.clone() - self.learning_rate * matching_derivative;
-                let new_non_matching_prototype = closest_non_matching_prototype.vector.clone() - self.learning_rate * non_matching_derivative;
+                let new_matching_prototype     = closest_matching_prototype.vector.clone() - learning_rate * matching_derivative;
+                let new_non_matching_prototype = closest_non_matching_prototype.vector.clone() - learning_rate * non_matching_derivative;
                 
                 // Update the prototypes
                 self.prototypes[closest_matching_prototype_index].vector     = new_matching_prototype;
@@ -203,6 +208,21 @@ impl GeneralLearningVectorQuantization {
     /// Simple getter for the prototype clusters
     pub fn prototypes(&self) -> &Vec<Prototype> {
         &self.prototypes
+    }
+
+}
+
+impl Schedulable for GeneralLearningVectorQuantization {
+
+    /// Updates the learning rate scheduler
+    /// 
+    /// # Arguments
+    /// 
+    /// * `scheduler` A function that takes in three arguments of the form (initial_learning_rate, current epoch, max epochs)
+    ///               The algorithm will insert these arguments when the learning rate is to be calculated.
+    ///  
+    fn set_learning_rate_scheduler (&mut self, scheduler : fn(f64, u32, u32) -> f64) {
+        self.lr_scheduler = scheduler;
     }
 
 }
