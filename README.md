@@ -1,5 +1,5 @@
 # vq
-A fast and lightweight vector quantization library/toolkit for Rust
+A fast and lightweight vector quantization library/toolkit entirely written in and for Rust
 
 Currently implements:
 - Vector Quantization (```vq::VectorQuantization```)
