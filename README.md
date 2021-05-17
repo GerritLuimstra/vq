@@ -7,7 +7,7 @@ Currently implements:
 - General Learning Vector Quantization (```vq::GeneralLearningVectorQuantization```)
 - General Matrix Learning Vector Quantization (```vq::GeneralMatrixLearningVectorQuantization```)
 
-Each model supports access to the learned parameters (and for some the matrices), reproducability through a seeded RNG and the ability to set a custom learning rate scheduler.
+Each model supports access to the learned parameters, the ability to reproduce runs through a seeded RNG and the ability to set a custom learning rate scheduler.
 
 ## Documentation
 To access the documentation simply run:
