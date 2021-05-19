@@ -1,8 +1,10 @@
 use super::Prototype;
+use super::CustomMonotonicFunction;
 use super::GeneralLearningVectorQuantization;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{euclidean_distance, find_closest_prototype};
 use super::traits::Schedulable;
+use super::traits::FunctionAdaptable;
 
 use rand::Rng;
 use ndarray::Array1;
@@ -36,7 +38,14 @@ impl GeneralLearningVectorQuantization {
             num_prototypes,
             initial_lr,
             lr_scheduler : |initial_lr, _, _| -> f64 { initial_lr },
-            max_epochs, 
+            monotonic_func : {
+                CustomMonotonicFunction {
+                    // identity function
+                    func: |distance, _epoch| -> f64 { distance },
+                    deriv: |_distance, _epoch| -> f64 { 1.0 },
+                }
+            },
+            max_epochs,
             rng: {
                 if seed != None {
                     ChaChaRng::seed_from_u64(seed.unwrap())
@@ -227,6 +236,21 @@ impl Schedulable for GeneralLearningVectorQuantization {
     ///  
     fn set_learning_rate_scheduler (&mut self, scheduler : fn(f64, u32, u32) -> f64) {
         self.lr_scheduler = scheduler;
+    }
+
+}
+
+impl FunctionAdaptable for GeneralLearningVectorQuantization {
+
+    /// Updates the function the monotonic distance function the respective algorithm uses
+    /// in both the prediction and training stage.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `function`  A custom monotonic function supplied with both the function and its derivative
+    ///
+    fn set_custom_distance_function (&mut self, function : CustomMonotonicFunction) {
+        self.monotonic_func = function;
     }
 
 }

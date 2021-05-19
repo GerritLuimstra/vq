@@ -17,7 +17,6 @@ use rand_chacha::ChaChaRng;
 mod helpers;
 mod prototype;
 
-
 /// This Prototype struct is syntactic sugar that wraps a vector and a name
 /// 
 /// # Properties
@@ -28,6 +27,22 @@ mod prototype;
 pub struct Prototype {
     pub vector: Array1<f64>,
     pub name: String
+}
+
+/// This struct allows a custom *monotonic* function to be supplied to certain LVQ algorithms.
+/// As an example, for GLVQ this custom function can be supplied to change the learning behaviour.
+/// The goal of the function is to give the ability to choose how the distances are weighted.
+/// Popular function choices include the identity function and the sigmoid function.
+/// 
+/// # Properties
+/// * `func`    The normal function to be used during the 'forward' stage. 
+///             This is used to calculate the distances with the prototypes.
+/// * `deriv`   The derivative of the function, to be used during the training stage.
+/// 
+#[derive(Debug)]
+pub struct CustomMonotonicFunction {
+    pub func: fn (distance : f64, epoch : u32) -> f64,
+    pub deriv: fn (distance : f64, epoch : u32) -> f64
 }
 
 /// The Vector Quantization model
@@ -114,6 +129,10 @@ pub struct LearningVectorQuantization {
 /// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
 ///                    This function can be custom and receives: (base_learning_rate, current_epoch, max_epochs) as parameters
 ///                    The default scheduler simply returns the initial learning rate every time
+/// * `monotonic_func` The monotonic function to be used during the prediction and training.
+///                    For more information about this function and its significance refer to the struct definition and the respective paper.
+///                    Both the function and the derivative receive as parameters (distance, current epoch) in this order.
+///                    This parameter defaults to the identity function.
 /// * `max_epochs`     The amount of epochs to run
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
@@ -123,6 +142,7 @@ pub struct GeneralLearningVectorQuantization {
     prototypes : Vec<Prototype>,
     initial_lr : f64,
     lr_scheduler : fn(f64, u32, u32) -> f64,
+    monotonic_func : CustomMonotonicFunction,
     max_epochs : u32, 
     rng : ChaChaRng
 }
@@ -149,6 +169,10 @@ pub struct GeneralLearningVectorQuantization {
 ///                    The default scheduler simply returns the initial learning rates every time
 ///                    Note: This time, we require that the scheduler returns two learning rates (one for the prototypes and one for the matrix)
 /// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
+/// * `monotonic_func` The monotonic function to be used during the prediction and training.
+///                    For more information about this function and its significance refer to the struct definition and the respective paper.
+///                    Both the function and the derivative receive as parameters (distance, current epoch) in this order.
+///                    This parameter defaults to the identity function.
 /// * `max_epochs`     The amount of epochs to run
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
@@ -159,6 +183,7 @@ pub struct GeneralMatrixLearningVectorQuantization {
     omega: Option<Array2<f64>>,
     initial_lr : (f64, f64),
     lr_scheduler : fn(f64, f64, u32, u32) -> (f64, f64),
+    monotonic_func : CustomMonotonicFunction,
     max_epochs : u32,
     rng : ChaChaRng
 }

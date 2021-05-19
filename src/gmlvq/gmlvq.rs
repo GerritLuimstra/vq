@@ -1,8 +1,10 @@
 use super::Prototype;
+use super::CustomMonotonicFunction;
 use super::GeneralMatrixLearningVectorQuantization;
-use super::traits::TupledSchedulable;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{generalized_distance, find_closest_prototype};
+use super::traits::TupledSchedulable;
+use super::traits::FunctionAdaptable;
 
 use rand::Rng;
 use ndarray::Array1;
@@ -40,6 +42,13 @@ impl GeneralMatrixLearningVectorQuantization {
             omega: None,
             initial_lr,
             lr_scheduler : |l_p, l_m, _, _| -> (f64, f64) { (l_p, l_m) },
+            monotonic_func : {
+                CustomMonotonicFunction {
+                    // identity function
+                    func: |distance, _epoch| -> f64 { distance },
+                    deriv: |_distance, _epoch| -> f64 { 1.0 },
+                }
+            },
             max_epochs, 
             rng: {
                 if seed != None {
@@ -357,6 +366,21 @@ impl TupledSchedulable for GeneralMatrixLearningVectorQuantization {
     ///
     fn set_learning_rate_scheduler (&mut self, scheduler : fn(f64, f64, u32, u32) -> (f64, f64)) {
         self.lr_scheduler = scheduler;
+    }
+
+}
+
+impl FunctionAdaptable for GeneralMatrixLearningVectorQuantization {
+
+    /// Updates the function the monotonic distance function the respective algorithm uses
+    /// in both the prediction and training stage.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `function`  A custom monotonic function supplied with both the function and its derivative
+    ///
+    fn set_custom_distance_function (&mut self, function : CustomMonotonicFunction) {
+        self.monotonic_func = function;
     }
 
 }
