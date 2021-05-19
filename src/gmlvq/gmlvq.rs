@@ -318,7 +318,7 @@ impl GMLVQ {
 
         assert!(self.prototypes.len() > 0, 
         "The model has not been fit yet. \n
-        Omega is not available yet at this stage.");
+        Lambda is not available yet at this stage.");
 
         // Clone omega, so that we can return a copy
         let omega = self.omega.clone().unwrap();
