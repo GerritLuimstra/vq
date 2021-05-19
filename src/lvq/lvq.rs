@@ -1,5 +1,5 @@
 use super::Prototype;
-use super::LearningVectorQuantization;
+use super::LVQ;
 use super::helpers::find_closest_prototype;
 use super::traits::Schedulable;
 
@@ -10,7 +10,7 @@ use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
 use std::collections::BTreeMap;
 
-impl LearningVectorQuantization {
+impl LVQ {
 
     /// Constructs a new Learning Vector Quantization model
     /// 
@@ -28,9 +28,9 @@ impl LearningVectorQuantization {
     pub fn new ( num_prototypes: BTreeMap<String, usize>, 
                  initial_lr: f64,
                  max_epochs: u32, 
-                 seed: Option<u64> ) -> LearningVectorQuantization {
+                 seed: Option<u64> ) -> LVQ {
 
-        LearningVectorQuantization {
+        LVQ {
             num_prototypes,
             initial_lr,
             lr_scheduler : |initial_lr, _, _| -> f64 { initial_lr },
@@ -199,7 +199,7 @@ impl LearningVectorQuantization {
 
 }
 
-impl Schedulable for LearningVectorQuantization {
+impl Schedulable for LVQ {
 
     /// Updates the learning rate scheduler
     /// 

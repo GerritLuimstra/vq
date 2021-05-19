@@ -1,5 +1,5 @@
 use super::Prototype;
-use super::VectorQuantization;
+use super::VQ;
 use super::traits::Schedulable;
 use super::helpers::find_closest_prototype;
 
@@ -9,7 +9,7 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 
-impl VectorQuantization {
+impl VQ {
 
     /// Constructs a new Vector Quantization model
     /// 
@@ -24,10 +24,10 @@ impl VectorQuantization {
     pub fn new (num_prototypes: u32, 
                 initial_lr: f64,
                 max_epochs: u32, 
-                seed: Option<u64> ) -> VectorQuantization {
+                seed: Option<u64> ) -> VQ {
         
         // Setup the model
-        VectorQuantization {
+        VQ {
             num_prototypes: num_prototypes,
             initial_lr,
             lr_scheduler : |initial_lr, _, _| -> f64 { initial_lr },
@@ -186,7 +186,7 @@ impl VectorQuantization {
 
 }
 
-impl Schedulable for VectorQuantization {
+impl Schedulable for VQ {
 
     /// Updates the learning rate scheduler
     /// 

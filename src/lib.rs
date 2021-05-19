@@ -45,7 +45,7 @@ pub struct CustomMonotonicFunction {
     pub deriv: fn (distance : f64, epoch : u32) -> f64
 }
 
-/// The Vector Quantization model
+/// The Vector Quantization (VQ) model
 /// 
 /// This struct and its methods allow the modeling of probability density functions of a given data set by the
 /// distribution of prototype vectors using stochastic gradient descent.
@@ -66,7 +66,7 @@ pub struct CustomMonotonicFunction {
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
 #[derive(Debug)]
-pub struct VectorQuantization {
+pub struct VQ {
     num_prototypes : u32,
     prototypes : Vec<Prototype>,
     initial_lr : f64,
@@ -75,7 +75,7 @@ pub struct VectorQuantization {
     rng : ChaChaRng
 }
 
-/// The Learning Vector Quantization model
+/// The Learning Vector Quantization (LVQ) model
 /// 
 /// This struct and its methods provide an implementation of the LVQ model using stochastic gradient descent.
 /// 
@@ -101,7 +101,7 @@ pub struct VectorQuantization {
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 /// 
 #[derive(Debug)]
-pub struct LearningVectorQuantization {
+pub struct LVQ {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
     initial_lr : f64,
@@ -137,7 +137,7 @@ pub struct LearningVectorQuantization {
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
 #[derive(Debug)]
-pub struct GeneralLearningVectorQuantization {
+pub struct GLVQ {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
     initial_lr : f64,
@@ -177,7 +177,7 @@ pub struct GeneralLearningVectorQuantization {
 /// * `rng`            The internal ChaChaRng to be used for reproducability.
 ///
 #[derive(Debug)]
-pub struct GeneralMatrixLearningVectorQuantization {
+pub struct GMLVQ {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
     omega: Option<Array2<f64>>,

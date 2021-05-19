@@ -1,6 +1,6 @@
 use super::Prototype;
 use super::CustomMonotonicFunction;
-use super::GeneralLearningVectorQuantization;
+use super::GLVQ;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{euclidean_distance, find_closest_prototype};
 use super::traits::Schedulable;
@@ -13,7 +13,7 @@ use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
 use std::collections::BTreeMap;
 
-impl GeneralLearningVectorQuantization {
+impl GLVQ {
 
     /// Constructs a new General Learning Vector Quantization model
     /// 
@@ -31,10 +31,10 @@ impl GeneralLearningVectorQuantization {
     pub fn new ( num_prototypes: BTreeMap<String, usize>,
                  initial_lr: f64,
                  max_epochs: u32,
-                 seed: Option<u64> ) -> GeneralLearningVectorQuantization {
+                 seed: Option<u64> ) -> GLVQ {
         
         // Setup the model
-        GeneralLearningVectorQuantization {
+        GLVQ {
             num_prototypes,
             initial_lr,
             lr_scheduler : |initial_lr, _, _| -> f64 { initial_lr },
@@ -223,7 +223,7 @@ impl GeneralLearningVectorQuantization {
 
 }
 
-impl Schedulable for GeneralLearningVectorQuantization {
+impl Schedulable for GLVQ {
 
     /// Updates the learning rate scheduler
     /// 
@@ -238,7 +238,7 @@ impl Schedulable for GeneralLearningVectorQuantization {
 
 }
 
-impl FunctionAdaptable for GeneralLearningVectorQuantization {
+impl FunctionAdaptable for GLVQ {
 
     /// Updates the function the monotonic distance function the respective algorithm uses
     /// in both the prediction and training stage.
