@@ -1,8 +1,7 @@
 use super::Prototype;
 use super::CustomMonotonicFunction;
-use super::GMLVQ;
-use super::helpers::find_closest_prototype_matched;
-use super::helpers::{generalized_distance, find_closest_prototype};
+use super::LGMLVQ;
+use super::helpers::{generalized_distance};
 use super::traits::TupledSchedulable;
 use super::traits::FunctionAdaptable;
 
@@ -15,9 +14,9 @@ use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
 use std::collections::BTreeMap;
 
-impl GMLVQ {
+impl LGMLVQ {
 
-    /// Constructs a new General Matrix Learning Vector Quantization model
+    /// Constructs a new Localized General Matrix Learning Vector Quantization model
     /// 
     /// # Arguments
     /// 
@@ -26,7 +25,7 @@ impl GMLVQ {
     ///                    in the data not present in this BTreeMap.
     ///                    A BTreeMap is used instead of a HashMap due to the ability of sorted keys, which is required for reproducability.
     /// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
-    ///                    Note: This time, we require two learning rates (one for the prototypes and one for the matrix) as a tuple
+    ///                    Note: This time, we require two learning rates (one for the prototypes and one for the matrices) as a tuple
     /// * `max_epochs`     The amount of epochs to run
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// * `seed`           The seed to be used by the internal ChaChaRng.
@@ -34,12 +33,12 @@ impl GMLVQ {
     pub fn new ( num_prototypes: BTreeMap<String, usize>,
                  initial_lr : (f64, f64),
                  max_epochs: u32,
-                 seed: Option<u64> ) -> GMLVQ {
+                 seed: Option<u64> ) -> LGMLVQ {
         
         // Setup the model
-        GMLVQ {
+        LGMLVQ {
             num_prototypes,
-            omega: None,
+            omegas: vec![],
             initial_lr,
             lr_scheduler : |l_p, l_m, _, _| -> (f64, f64) { (l_p, l_m) },
             monotonic_func : {
@@ -133,13 +132,13 @@ impl GMLVQ {
 
                 // Add the newly created prototypes to the prototype list
                 self.prototypes.push(selected_prototype);
+
+                // Setup a local matrix Omega_j for the current prototype j
+                // and normalize it such that Omega_j^T Omega_j has diagonal elements that sum to one
+                let n = self.prototypes[0].vector.dim();
+                self.omegas.push(self.normalize_omega(&Array::eye(n)));
             }
         }
-
-        // Setup the n by n adaptive metric matrix Omega
-        // and normalize omega such that Omega^T Omega has diagonal elements that sum to one
-        let n = self.prototypes[0].vector.dim();
-        self.omega = Some(self.normalize_omega(&Array::eye(n)));
     }
 
     /// Fits the General Matrix Learning Vector Quantization model on the given data
@@ -172,27 +171,27 @@ impl GMLVQ {
                 let data_label  = &labels[data_index];
                 let data_sample = &data[data_index];
 
-                // Compute Lambda = Omega^T Omega
-                let omega : &Array2<f64> = self.omega.as_ref().unwrap();
-                let lambda = omega.t().dot(&omega.to_owned());
-
                 // Find the indices of w_J and w_K, which are the closest matching and closest non-matching prototype respectively
-                let w_j_index = find_closest_prototype_matched(
-                    &self.prototypes, &data_sample,
-                    &data_label, true, Some(omega)
+                let w_j_index = self.find_closest_local_prototype_matched (
+                    &data_sample, &data_label, true
                 );
-                let w_k_index = find_closest_prototype_matched(
-                    &self.prototypes, &data_sample, 
-                    &data_label, false, Some(omega)
+                let w_k_index = self.find_closest_local_prototype_matched (
+                    &data_sample, &data_label, false
                 );
+
+                // From the indices, obtain the corresponding Omegas
+                let omega_j : &Array2<f64> = &self.omegas[w_j_index];
+                let lambda_j = omega_j.t().dot(&omega_j.to_owned());
+                let omega_k : &Array2<f64> = &self.omegas[w_k_index];
+                let lambda_k = omega_k.t().dot(&omega_k.to_owned());
                 
                 // From the indices, obtain the corresponding prototypes
                 let w_j = self.prototypes.get(w_j_index).unwrap();
                 let w_k = self.prototypes.get(w_k_index).unwrap();
 
                 // Compute the distances to the closest correct and wrong prototype
-                let d_j = generalized_distance(omega, data_sample, &w_j.vector);
-                let d_k = generalized_distance(omega, data_sample, &w_k.vector);
+                let d_j = generalized_distance(omega_j, data_sample, &w_j.vector);
+                let d_k = generalized_distance(omega_k, data_sample, &w_k.vector);
 
                 // Compute mu_plus and mu_minus (the derivative of mu with respect to the closest and furthers prototype distance)
                 let norm = (d_k + d_j).powi(2);
@@ -200,27 +199,30 @@ impl GMLVQ {
                 let mu_minus = 2.0 * d_j / norm;
 
                 // TODO: Replace the 1.0 with a general / sigmoid function
-                let deriv_w_j = 2.0 * 1.0 * mu_plus  * lambda.dot(&(data_sample - w_j.vector.to_owned()));
-                let deriv_w_k = 2.0 * 1.0 * mu_minus * lambda.dot(&(data_sample - w_k.vector.to_owned()));
+                let deriv_w_j = 2.0 * 1.0 * mu_plus  * lambda_k.dot(&(data_sample - w_j.vector.to_owned()));
+                let deriv_w_k = 2.0 * 1.0 * mu_minus * lambda_j.dot(&(data_sample - w_k.vector.to_owned()));
                 
                 // Compute the differences with the samples and the corresponding vectors
                 // and their versions dotted with Omega
                 let diff_j = data_sample - w_j.vector.to_owned();
                 let diff_k = data_sample - w_k.vector.to_owned();
-                let omega_diff_j = omega.dot(&diff_j);
-                let omega_diff_k = omega.dot(&diff_k);
+                let omega_diff_j = omega_j.dot(&diff_j);
+                let omega_diff_k = omega_k.dot(&diff_k);
 
-                // Compute the gradient
-                let n = omega.dim().0;
-                let mut omega_gradient : Array2<f64> = Array::zeros((n, n));
+                // Compute the gradients
+                let n = omega_j.dim().0;
+                let mut omega_gradient_j : Array2<f64> = Array::zeros((n, n));
+                let mut omega_gradient_k : Array2<f64> = Array::zeros((n, n));
                 for l in 0 .. n {
                     for m in 0 .. n {
-                        omega_gradient[[l, m]] = mu_plus * diff_j[m] * omega_diff_j[l] - mu_minus * diff_k[m] * omega_diff_k[l];
+                        omega_gradient_j[[l, m]] = mu_plus  * diff_j[m] * omega_diff_j[l];
+                        omega_gradient_k[[l, m]] = - mu_minus * diff_k[m] * omega_diff_k[l];
                     }
                 }
 
                 // TODO: Replace the 1.0 with a general / sigmoid function
-                let omega_gradient = - 2.0 * 1.0 * omega_gradient;
+                let omega_gradient_j = - 2.0 * 1.0 * omega_gradient_j;
+                let omega_gradient_k = - 2.0 * 1.0 * omega_gradient_k;
 
                 // Compute the learning rates
                 let learning_rates = (self.lr_scheduler)(self.initial_lr.0, self.initial_lr.1, epoch, self.max_epochs);
@@ -228,21 +230,27 @@ impl GMLVQ {
                 // Perform the complete update rules
                 let new_w_j   = w_j.vector.clone() + learning_rates.0 * deriv_w_j;
                 let new_w_k   = w_k.vector.clone() - learning_rates.0 * deriv_w_k;
-                let new_omega = omega.clone()      + learning_rates.1 * omega_gradient;
+                let new_omega_j = omega_j.clone()  + learning_rates.1 * omega_gradient_j;
+                let new_omega_k = omega_k.clone()  + learning_rates.1 * omega_gradient_k;
+
+                // Normalize the matrices
+                let new_omega_j = self.normalize_omega(&new_omega_j);
+                let new_omega_k = self.normalize_omega(&new_omega_k);
                 
                 // Update the prototypes
                 self.prototypes[w_j_index].vector = new_w_j;
                 self.prototypes[w_k_index].vector = new_w_k;
 
-                // Normalize omega such that Omega^T Omega has diagonal elements that sum to one
-                // this is to prevent learning degeneration
-                self.omega = Some(self.normalize_omega(&new_omega));
+
+                // Update the omega matrices
+                self.omegas[w_j_index] = new_omega_j;
+                self.omegas[w_k_index] = new_omega_k;
             }
         }
     }
 
     /// Assign cluster labels (i.e. predict) to the data given data
-    /// based on the learned prototype vectors and the learned adaptive distance metric
+    /// based on the learned prototype vectors and the learned local adaptive distance metric
     /// 
     /// # Arguments
     /// 
@@ -259,8 +267,8 @@ impl GMLVQ {
 
             // TODO: Make this also work with the custom functions.
 
-            // Obtain the closest prototype
-            let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, Some(self.omega.as_ref().unwrap()));
+            // Obtain the closest *local* prototype
+            let closest_prototype_index = self.find_closest_local_prototype(&data_sample);
             let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap();
 
             // Add the cluster label to the list
@@ -274,7 +282,7 @@ impl GMLVQ {
 
     /// Simple getter for the prototype clusters
     /// 
-    /// NOTE: This projects the prototypes using Lambda!
+    /// NOTE: This projects the prototypes using its local matrix Lambda_j = Omega_j^T Omega_j!
     /// 
     pub fn prototypes(&self) -> Vec<Prototype> {
 
@@ -282,17 +290,17 @@ impl GMLVQ {
         "The model has not been fit yet. \n
         There are no prototypes at this stage.");
 
-        // Compute Lambda = Omega^T Omega
-        let omega : &Array2<f64> = self.omega.as_ref().unwrap();
-        let lambda = omega.t().dot(&omega.to_owned());
-
         // Setup the new project samples
         let mut projected_prototypes = Vec::<Prototype>::new();
 
-        for prototype in self.prototypes.iter() {
+        for (index, prototype) in self.prototypes.iter().enumerate() {
 
             // Clone the prototype
             let mut prototype = prototype.clone();
+
+            // Compute Lambda_j = Omega_j^T Omega_j
+            let omega = &self.omegas[index];
+            let lambda = omega.t().dot(&omega.to_owned());
 
             // Project the prototype using Lambda
             prototype.vector = lambda.dot(&prototype.vector);
@@ -303,30 +311,40 @@ impl GMLVQ {
         projected_prototypes
     }
 
-    /// Simple getter for the Omega matrix
-    pub fn omega(&self) -> &Array2<f64> {
+    /// Simple getter for the Omegas
+    pub fn omegas(&self) -> &Vec<Array2<f64>> {
 
         assert!(self.prototypes.len() > 0, 
         "The model has not been fit yet. \n
-        Omega is not available yet at this stage.");
+        The omages are not available yet at this stage.");
 
-        &self.omega.as_ref().unwrap()
+        &self.omegas
     }
 
-    /// Simple getter for the Lambda matrix
-    pub fn lambda(&self) -> Array2<f64> {
+    /// Simple getter for the Lambdas
+    pub fn lambdas(&self) -> Vec<Array2<f64>> {
 
         assert!(self.prototypes.len() > 0, 
         "The model has not been fit yet. \n
-        Lambda is not available yet at this stage.");
+        The Lambdas are not available yet at this stage.");
 
-        // Clone omega, so that we can return a copy
-        let omega = self.omega.clone().unwrap();
+        let mut lambdas = vec![];
 
-        omega.t().dot(&omega)
+        for omega in self.omegas.clone() {
+
+            // Compute the local matrix Lambda
+            let lambda = omega.t().dot(&omega);
+
+            lambdas.push(lambda);
+        }
+
+        lambdas
     }
 
-    /// Projects the data based on learned Lambda = Omega^T Omega matrix
+    /// Projects the data based the closest prototype its Lambda matrix.
+    /// 
+    /// For each data sample, the closest prototype is obtained and its associated Omega_j matrix is found.
+    /// The data sample is the projected using the Lambda_j = Omega_j^T Omega_j matrix.
     /// 
     /// # Arguments
     /// 
@@ -334,14 +352,17 @@ impl GMLVQ {
     /// 
     pub fn project(&self, data : &Vec<Array1<f64>>) -> Vec::<Array1<f64>> {
 
-        // Compute Lambda = Omega^T Omega
-        let omega : &Array2<f64> = self.omega.as_ref().unwrap();
-        let lambda = omega.t().dot(&omega.to_owned());
-
         // Setup the new project samples
         let mut projected_samples = Vec::<Array1<f64>>::new();
 
         for data_sample in data.iter() {
+            
+            // Obtain the closest *local* prototype
+            let closest_prototype_index = self.find_closest_local_prototype(&data_sample);
+
+            // Obtain its matrix Omega and compute the local matrix Lambda
+            let omega = self.omegas[closest_prototype_index].clone();
+            let lambda = omega.t().dot(&omega);
 
             // Project the data using Lambda
             let projected_sample : Array1<f64> = lambda.dot(&data_sample.clone());
@@ -354,7 +375,7 @@ impl GMLVQ {
 
 }
 
-impl TupledSchedulable for GMLVQ {
+impl TupledSchedulable for LGMLVQ {
 
     /// Updates the learning rate scheduler of this model
     /// 
@@ -370,7 +391,7 @@ impl TupledSchedulable for GMLVQ {
 
 }
 
-impl FunctionAdaptable for GMLVQ {
+impl FunctionAdaptable for LGMLVQ {
 
     /// Updates the function the monotonic distance function this algorithm uses
     /// in both the prediction and training stage.
@@ -381,6 +402,88 @@ impl FunctionAdaptable for GMLVQ {
     ///
     fn set_custom_distance_function (&mut self, _function : CustomMonotonicFunction) {
         unimplemented!("This is not implemented currently.");
+    }
+
+}
+
+impl LGMLVQ {
+
+    /// Obtains the closest prototype index for a given sample based on the local matrices Omega_j
+    /// 
+    /// # Arguments
+    ///
+    /// * `sample`     The sample to find the closest prototype for
+    /// 
+    pub fn find_closest_local_prototype (&self, sample : &Array1<f64>) -> usize {
+
+        // Initialize values
+        let mut closest_prototype_index = 0 as usize;
+        let mut smallest_distance       = f64::INFINITY;
+
+        for (index, prototype) in self.prototypes.iter().enumerate() {
+
+            // Find the distance using the local omega matrix
+            let distance = generalized_distance(&self.omegas[index], sample, &prototype.vector);
+
+            // Update the current closest, if we have found a one that is closer
+            if distance < smallest_distance {
+                closest_prototype_index = index;
+                smallest_distance       = distance;
+            }
+        }
+
+        closest_prototype_index
+    }
+
+    /// Obtains the closest matching prototype index for a given sample based on the local matrix Omega
+    /// If the `find_closest_matching` is set to false, 
+    /// obtain the closest prototype with a different class instead.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `sample` The sample to find the closest prototype for
+    /// * `label`  The label of the sample
+    /// * `find_closest_matching` Determines whether the closest matching 
+    ///                           or non-matching prototype is to be found.
+    /// 
+    pub fn find_closest_local_prototype_matched (
+                                        &self,
+                                        sample : &Array1<f64>, 
+                                        label: &String,
+                                        find_closest_matching: bool) -> usize {
+        
+        // Initialize values
+        let mut closest_prototype_index = 0 as usize;
+        let mut smallest_distance       = f64::INFINITY;
+
+        for (index, prototype) in self.prototypes.iter().enumerate() {
+
+            // Find the distance using the local omega matrix
+            let distance = generalized_distance(&self.omegas[index], sample, &prototype.vector);
+
+            // Find the closest prototype with the same class
+            if find_closest_matching {
+                
+                // Update the current closest, if we have found a one that is closer
+                if distance < smallest_distance && prototype.name == *label {
+                    closest_prototype_index = index;
+                    smallest_distance       = distance;
+                }
+
+            } else {
+                // In this case, we want to find the closest prototype with a different class
+
+                // Update the current closest, if we have found a one that is closer
+                if distance < smallest_distance && prototype.name != *label {
+                    closest_prototype_index = index;
+                    smallest_distance       = distance;
+                }
+
+            }
+        
+        }
+
+        closest_prototype_index
     }
 
 }

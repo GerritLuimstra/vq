@@ -7,6 +7,8 @@ mod lvq;
 mod glvq;
 #[path = "gmlvq/gmlvq.rs"]
 mod gmlvq;
+#[path = "lgmlvq/lgmlvq.rs"]
+mod lgmlvq;
 #[path = "liramlvq/liramlvq.rs"]
 mod liramlvq;
 #[path = "traits/traits.rs"]
@@ -170,7 +172,6 @@ pub struct GLVQ {
 ///                    (base_learning_rate_protototype, base_learning_rate_matrix, current_epoch, max_epochs) as parameters
 ///                    The default scheduler simply returns the initial learning rates every time
 ///                    Note: This time, we require that the scheduler returns two learning rates (one for the prototypes and one for the matrix)
-/// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
 /// * `monotonic_func` The monotonic function to be used during the prediction and training.
 ///                    For more information about this function and its significance refer to the struct definition and the respective paper.
 ///                    Both the function and the derivative receive as parameters (distance, current epoch) in this order.
@@ -183,6 +184,46 @@ pub struct GMLVQ {
     num_prototypes : BTreeMap<String, usize>,
     prototypes : Vec<Prototype>,
     omega: Option<Array2<f64>>,
+    initial_lr : (f64, f64),
+    lr_scheduler : fn(f64, f64, u32, u32) -> (f64, f64),
+    monotonic_func : CustomMonotonicFunction,
+    max_epochs : u32,
+    rng : ChaChaRng
+}
+
+/// The Localized General Matrix Learning Vector Quantization (LGMLVQ) model
+///
+/// This struct and its methods provide an implementation of the Localized GMLVQ algorithm using stochastic gradient descent.
+/// The algorithm is the same as GMLVQ besides the fact that each prototype j now has a local matrix Omega_j attached to it,
+/// rather than a global matrix Omega.
+///
+/// The implementation is entirely based on the following paper [[1]](http://www.cs.rug.nl/~biehl/Preprints/gmlvq.pdf).
+///
+/// This specific implementation allows for a variable number of prototypes per class.
+///
+/// # Properties
+/// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
+/// * `prototypes`     A vector of the prototypes (initially empty)
+/// * `omegas`         The matrices used to compute the adaptive relevance matrices Lambda_j = tranpose(Omega_j).dot(Omega_j)
+/// * `initial_lr`     The initial learning rate to be used by the learning rate scheduler
+///                    Note: This time, we require two learning rates (one for the prototypes and one for the matrix) as a tuple
+/// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
+///                    This function can be custom and receives: 
+///                    (base_learning_rate_protototype, base_learning_rate_matrix, current_epoch, max_epochs) as parameters
+///                    The default scheduler simply returns the initial learning rates every time
+///                    Note: This time, we require that the scheduler returns two learning rates (one for the prototypes and one for the matrices)
+/// * `monotonic_func` The monotonic function to be used during the prediction and training.
+///                    For more information about this function and its significance refer to the struct definition and the respective paper.
+///                    Both the function and the derivative receive as parameters (distance, current epoch) in this order.
+///                    This parameter defaults to the identity function.
+/// * `max_epochs`     The amount of epochs to run
+/// * `rng`            The internal ChaChaRng to be used for reproducability.
+///
+#[derive(Debug)]
+pub struct LGMLVQ {
+    num_prototypes : BTreeMap<String, usize>,
+    prototypes : Vec<Prototype>,
+    omegas: Vec<Array2<f64>>,
     initial_lr : (f64, f64),
     lr_scheduler : fn(f64, f64, u32, u32) -> (f64, f64),
     monotonic_func : CustomMonotonicFunction,
@@ -214,7 +255,6 @@ pub struct GMLVQ {
 ///                    (base_learning_rate_protototype, base_learning_rate_matrix, current_epoch, max_epochs) as parameters
 ///                    The default scheduler simply returns the initial learning rates every time
 ///                    Note: This time, we require that the scheduler returns two learning rates (one for the prototypes and one for the matrix)
-/// * `lr_scheduler`   The learning rate scheduler for the update step of the prototypes
 /// * `monotonic_func` The monotonic function to be used during the prediction and training.
 ///                    For more information about this function and its significance refer to the struct definition and the respective paper.
 ///                    Both the function and the derivative receive as parameters (distance, current epoch) in this order.

@@ -6,6 +6,7 @@ Currently implements:
 - Learning Vector Quantization (LVQ, [2]) (```vq::LVQ```)
 - General Learning Vector Quantization (GLVQ, [3])(```vq::GLVQ```)
 - General Matrix Learning Vector Quantization (GMLVQ, [4]) (```vq::GMLVQ```)
+- Localized General Matrix Learning Vector Quantization (LGMLVQ, [4]) (```vq::LGMLVQ```)
 - Limited Rank Matrix Learning Vector Quantization (LiRaMLVQ, [5]) (```vq::LiRaMLVQ```)
 
 Each model supports access to the learned parameters, the ability to reproduce runs through a seeded RNG and the ability to set a custom learning rate scheduler.
