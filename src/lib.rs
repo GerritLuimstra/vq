@@ -39,7 +39,7 @@ pub struct Prototype {
 ///             This is used to calculate the distances with the prototypes.
 /// * `deriv`   The derivative of the function, to be used during the training stage.
 /// 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CustomMonotonicFunction {
     pub func: fn (distance : f64, epoch : u32) -> f64,
     pub deriv: fn (distance : f64, epoch : u32) -> f64

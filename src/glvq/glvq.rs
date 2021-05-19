@@ -205,11 +205,9 @@ impl GeneralLearningVectorQuantization {
 
         for data_sample in data {
 
-            // TODO: Make this also work with the custom functions.
-
             // Obtain the closest prototype
             let closest_prototype_index = find_closest_prototype(&self.prototypes, &data_sample, None);
-            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap(); 
+            let closest_prototype       = self.prototypes.get(closest_prototype_index).unwrap();
 
             // Add the cluster label to the list
             cluster_labels.push(closest_prototype.name.clone());
@@ -249,8 +247,8 @@ impl FunctionAdaptable for GeneralLearningVectorQuantization {
     /// 
     /// * `function`  A custom monotonic function supplied with both the function and its derivative
     ///
-    fn set_custom_distance_function (&mut self, function : CustomMonotonicFunction) {
-        self.monotonic_func = function;
+    fn set_custom_distance_function (&mut self, _function : CustomMonotonicFunction) {
+        unimplemented!("This is not implemented currently.");
     }
 
 }

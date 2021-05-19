@@ -379,8 +379,8 @@ impl FunctionAdaptable for GeneralMatrixLearningVectorQuantization {
     /// 
     /// * `function`  A custom monotonic function supplied with both the function and its derivative
     ///
-    fn set_custom_distance_function (&mut self, function : CustomMonotonicFunction) {
-        self.monotonic_func = function;
+    fn set_custom_distance_function (&mut self, _function : CustomMonotonicFunction) {
+        unimplemented!("This is not implemented currently.");
     }
 
 }
