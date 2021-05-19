@@ -316,7 +316,7 @@ impl LGMLVQ {
 
         assert!(self.prototypes.len() > 0, 
         "The model has not been fit yet. \n
-        The omages are not available yet at this stage.");
+        The omegas are not available yet at this stage.");
 
         &self.omegas
     }
