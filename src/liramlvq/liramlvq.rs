@@ -1,6 +1,6 @@
 use super::Prototype;
 use super::CustomMonotonicFunction;
-use super::GMLVQ;
+use super::LiRaMLVQ;
 use super::helpers::find_closest_prototype_matched;
 use super::helpers::{generalized_distance, find_closest_prototype};
 use super::traits::TupledSchedulable;
@@ -14,13 +14,16 @@ use rand::SeedableRng;
 use rand::seq::SliceRandom;
 use rand_chacha::ChaChaRng;
 use std::collections::BTreeMap;
+use ndarray_rand::RandomExt;
+use ndarray_rand::rand_distr::Uniform;
 
-impl GMLVQ {
+impl LiRaMLVQ {
 
-    /// Constructs a new General Matrix Learning Vector Quantization model
+    /// Constructs a Limited Rank Matrix Learning Vector Quantization (LiRaMLVQ) model
     /// 
     /// # Arguments
     /// 
+    /// * `max_rank`       The maximum rank of the matrix Lambda = Omega^T Omega
     /// * `num_prototypes` The amount of prototypes to use per class (a BTreeMap, that maps the class name to the number of prototypes to use)
     ///                    This BTreeMap should be provided as a reference and the algorithm will panic if there are classes
     ///                    in the data not present in this BTreeMap.
@@ -31,13 +34,15 @@ impl GMLVQ {
     /// * `prototypes`     A vector of the prototypes (initially empty)
     /// * `seed`           The seed to be used by the internal ChaChaRng.
     /// 
-    pub fn new ( num_prototypes: BTreeMap<String, usize>,
+    pub fn new ( max_rank : u32,
+                 num_prototypes: BTreeMap<String, usize>,
                  initial_lr : (f64, f64),
                  max_epochs: u32,
-                 seed: Option<u64> ) -> GMLVQ {
+                 seed: Option<u64> ) -> LiRaMLVQ {
         
         // Setup the model
-        GMLVQ {
+        LiRaMLVQ {
+            max_rank,
             num_prototypes,
             omega: None,
             initial_lr,
@@ -78,6 +83,9 @@ impl GMLVQ {
 
         // Assert that the model has not been fit yet
         assert!(self.prototypes.len() == 0, "This model has already been fit.");
+
+        // Assert that the projected rank is bigger than 0.
+        assert!(self.max_rank > 0, "The max rank needs to be bigger than 0!");
     }
 
     ///
@@ -136,13 +144,16 @@ impl GMLVQ {
             }
         }
 
-        // Setup the n by n adaptive metric matrix Omega
+        // Setup the (random) M by N adaptive metric matrix Omega
         // and normalize omega such that Omega^T Omega has diagonal elements that sum to one
+        let m = self.max_rank as usize;
         let n = self.prototypes[0].vector.dim();
-        self.omega = Some(self.normalize_omega(&Array::eye(n)));
+        let omega = Array::random_using((m, n), Uniform::new(-1., 1.), &mut self.rng);
+        let omega = self.normalize_omega(&omega);
+        self.omega = Some(omega);
     }
 
-    /// Fits the General Matrix Learning Vector Quantization model on the given data
+    /// Fits the Limited Rank Matrix Learning Vector Quantization on the given data
     /// 
     /// # Arguments
     /// 
@@ -196,8 +207,8 @@ impl GMLVQ {
 
                 // Compute mu_plus and mu_minus (the derivative of mu with respect to the closest and furthers prototype distance)
                 let norm = (d_k + d_j).powi(2);
-                let mu_plus  = 2.0 * d_k / norm;
-                let mu_minus = 2.0 * d_j / norm;
+                let mu_plus  =   2.0 * d_k / norm;
+                let mu_minus = - 2.0 * d_j / norm;
 
                 // TODO: Replace the 1.0 with a general / sigmoid function
                 let deriv_w_j = 2.0 * 1.0 * mu_plus  * lambda.dot(&(data_sample - w_j.vector.to_owned()));
@@ -211,24 +222,31 @@ impl GMLVQ {
                 let omega_diff_k = omega.dot(&diff_k);
 
                 // Compute the gradient
-                let n = omega.dim().0;
-                let mut omega_gradient : Array2<f64> = Array::zeros((n, n));
-                for l in 0 .. n {
-                    for m in 0 .. n {
-                        omega_gradient[[l, m]] = mu_plus * diff_j[m] * omega_diff_j[l] - mu_minus * diff_k[m] * omega_diff_k[l];
+                let m = self.max_rank as usize;
+                let n = omega.dim().1;
+                let mut omega_gradient : Array2<f64> = Array::zeros((m, n));
+                for l in 0 .. m {
+                    for k in 0 .. n {
+
+                        // Compute the derivatives of the distance with respect to the element Omega_mn for W_j and W_k
+                        let deriv_d_mn_j = omega_diff_j[l] * diff_j[k];
+                        let deriv_d_mn_k = omega_diff_k[l] * diff_k[k];
+
+                        // Compute the derivative w.r.t. each element of omega
+                        omega_gradient[[l, k]] = mu_plus * deriv_d_mn_j + mu_minus * deriv_d_mn_k;
                     }
                 }
 
                 // TODO: Replace the 1.0 with a general / sigmoid function
-                let omega_gradient = - 2.0 * 1.0 * omega_gradient;
+                let omega_gradient = 2.0 * 1.0 * omega_gradient;
 
                 // Compute the learning rates
                 let learning_rates = (self.lr_scheduler)(self.initial_lr.0, self.initial_lr.1, epoch, self.max_epochs);
 
-                // Perform the complete update rules
+                // // Perform the complete update rules
                 let new_w_j   = w_j.vector.clone() + learning_rates.0 * deriv_w_j;
-                let new_w_k   = w_k.vector.clone() - learning_rates.0 * deriv_w_k;
-                let new_omega = omega.clone()      + learning_rates.1 * omega_gradient;
+                let new_w_k   = w_k.vector.clone() + learning_rates.0 * deriv_w_k;
+                let new_omega = omega.clone()      - learning_rates.1 * omega_gradient;
                 
                 // Update the prototypes
                 self.prototypes[w_j_index].vector = new_w_j;
@@ -270,7 +288,28 @@ impl GMLVQ {
         cluster_labels
     }
 
+    /// Simple getter for the Omega matrix
+    pub fn omega(&self) -> &Array2<f64> {
 
+        assert!(self.prototypes.len() > 0, 
+        "The model has not been fit yet. \n
+        Omega is not available yet at this stage.");
+
+        &self.omega.as_ref().unwrap()
+    }
+
+    /// Simple getter for the Lambda matrix
+    pub fn lambda(&self) -> Array2<f64> {
+
+        assert!(self.prototypes.len() > 0, 
+        "The model has not been fit yet. \n
+        Omega is not available yet at this stage.");
+
+        // Clone omega, so that we can return a copy
+        let omega = self.omega.clone().unwrap();
+
+        omega.t().dot(&omega)
+    }
 
     /// Simple getter for the prototype clusters
     /// 
@@ -303,28 +342,37 @@ impl GMLVQ {
         projected_prototypes
     }
 
-    /// Simple getter for the Omega matrix
-    pub fn omega(&self) -> &Array2<f64> {
+    /// Simple getter for the prototype clusters projected using Omega
+    /// 
+    /// NOTE: This projects the prototypes using Omega!
+    /// It projects the prototypes to M (max_rank) rather than the default N dimensions.
+    /// 
+    pub fn prototypes_omega (&self) -> Vec<Prototype> {
 
         assert!(self.prototypes.len() > 0, 
         "The model has not been fit yet. \n
-        Omega is not available yet at this stage.");
+        There are no prototypes at this stage.");
 
-        &self.omega.as_ref().unwrap()
+        // Obtain omega
+        let omega : &Array2<f64> = self.omega.as_ref().unwrap();
+
+        // Setup the new project samples
+        let mut projected_prototypes = Vec::<Prototype>::new();
+
+        for prototype in self.prototypes.iter() {
+
+            // Clone the prototype
+            let mut prototype = prototype.clone();
+
+            // Project the prototype using Lambda
+            prototype.vector = omega.dot(&prototype.vector);
+
+            projected_prototypes.push(prototype);
+        }
+
+        projected_prototypes
     }
 
-    /// Simple getter for the Lambda matrix
-    pub fn lambda(&self) -> Array2<f64> {
-
-        assert!(self.prototypes.len() > 0, 
-        "The model has not been fit yet. \n
-        Omega is not available yet at this stage.");
-
-        // Clone omega, so that we can return a copy
-        let omega = self.omega.clone().unwrap();
-
-        omega.t().dot(&omega)
-    }
 
     /// Projects the data based on learned Lambda = Omega^T Omega matrix
     /// 
@@ -352,9 +400,36 @@ impl GMLVQ {
         projected_samples
     }
 
+    /// Projects the data based on learned Omega matrix
+    /// This method is useful for clustering purposes.
+    /// It projects the data to M (max_rank) rather than the default N dimensions.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `data` The data to project according to the learned matrix Omega
+    /// 
+    pub fn project_omega (&self, data : &Vec<Array1<f64>>) -> Vec::<Array1<f64>> {
+
+        // Obtain omega
+        let omega : &Array2<f64> = self.omega.as_ref().unwrap();
+
+        // Setup the new project samples
+        let mut projected_samples = Vec::<Array1<f64>>::new();
+
+        for data_sample in data.iter() {
+
+            // Project the data using Lambda
+            let projected_sample : Array1<f64> = omega.dot(&data_sample.clone());
+
+            projected_samples.push(projected_sample);
+        }
+
+        projected_samples
+    }
+
 }
 
-impl TupledSchedulable for GMLVQ {
+impl TupledSchedulable for LiRaMLVQ {
 
     /// Updates the learning rate scheduler of this model
     /// 
@@ -370,7 +445,7 @@ impl TupledSchedulable for GMLVQ {
 
 }
 
-impl FunctionAdaptable for GMLVQ {
+impl FunctionAdaptable for LiRaMLVQ {
 
     /// Updates the function the monotonic distance function this algorithm uses
     /// in both the prediction and training stage.

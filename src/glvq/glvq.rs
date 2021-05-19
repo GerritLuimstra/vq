@@ -240,7 +240,7 @@ impl Schedulable for GLVQ {
 
 impl FunctionAdaptable for GLVQ {
 
-    /// Updates the function the monotonic distance function the respective algorithm uses
+    /// Updates the function the monotonic distance function this algorithm uses
     /// in both the prediction and training stage.
     /// 
     /// # Arguments
