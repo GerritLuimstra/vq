@@ -130,3 +130,73 @@ pub fn find_closest_prototype_matched (prototypes: &Vec<Prototype>,
 
     closest_prototype_index
 }
+
+/// Generates the Gabor filter coefficients
+/// 
+/// # Arguments
+/// 
+/// * `size`   The size of the kernel (needs to be odd)
+/// * `sigma`  Standard deviation of the gaussian envelope. 
+/// * `theta`  Orientation of the normal to the parallel stripes of a Gabor function. 
+/// * `lambda` Wavelength of the sinusoidal factor.
+/// * `gamma`  Spatial aspect ratio.
+/// * `psi`    Phase offset.
+/// 
+pub fn get_gabor_kernel(size : usize, sigma : f64, theta : f64, lambda : f64, gamma : f64, psi : f64) -> Array2<f64> {
+
+    // Assert that we are dealing with a square kernel of odd size
+    assert!(size % 2 == 1);
+
+    let width  = size as i32;
+    let height = size as i32;
+
+    let sigma_x = sigma;
+    let sigma_y = sigma/gamma;
+
+    let xmin : f64;
+    let xmax : f64;
+    let ymin : f64;
+    let ymax : f64;
+    
+    let c = theta.cos();
+    let s = theta.sin();
+
+    xmax = (width / 2) as f64;
+    ymax = (height / 2) as f64;
+    xmin = -xmax;
+    ymin = -ymax;
+
+    let xmin = xmin as i32;
+    let xmax = xmax as i32;
+    let ymin = ymin as i32;
+    let ymax = ymax as i32;
+    
+    // Setup the kernel
+    let dim_x = (xmax - xmin + 1) as usize; 
+    let dim_y = (ymax - ymin + 1) as usize;
+    let mut kernel : Array2<f64> = Array::zeros((dim_y, dim_x));
+
+    let ex = -0.5 /(sigma_x * sigma_x);
+    let ey = -0.5 /(sigma_y * sigma_y);
+    let cscale = std::f64::consts::PI * 2.0 / lambda;
+
+    // Compute the filter coefficients
+    for y in ymin .. ymax + 1 {
+        for x in xmin .. xmax + 1 {
+            let x = x as f64;
+            let y = y as f64;
+
+            // Compute the coefficient
+            let xr = x * c + y * s;
+            let yr = -x * s + y * c;
+            let v = (ex * xr * xr + ey * yr * yr).exp() * (cscale * xr + psi).cos();
+
+            // Add the coefficient to the kernel
+            let y_pos = (ymax - y as i32) as usize;
+            let x_pos = (xmax - x as i32) as usize;
+            kernel[[y_pos, x_pos]] = v;
+        }
+    }
+    
+    kernel
+}
