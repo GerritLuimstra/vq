@@ -63,12 +63,26 @@ impl LGMLVQ {
     ///
     /// Checks if the required constraints are met for the model fitting stage
     /// 
-    fn check_fit_constraints(&mut self, data : &Vec<Array1<f64>>) {
+    fn check_fit_constraints(&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
+
+        // Check that the data and labels have the same length
+        assert!(data.len() == labels.len(), "The data vector does not match the label vector in length.");
 
         // Compute the total amount of prototypes given
         let mut total_prototypes = 0;
         for num_prototypes in self.num_prototypes.values() {
             total_prototypes += num_prototypes;
+
+            if num_prototypes <= &(0 as usize) {
+                panic!("Each class needs to have at least one prototype!");
+            }
+        }
+
+        // Check that each label that is provided, is found in the prototype mapping
+        for label in labels.iter() {
+            if !self.num_prototypes.contains_key(label) {
+                panic!("Unknown label {}. Consider adding it to the prototype mapping.", label);
+            }
         }
 
         // Assert that there is enough data
@@ -77,6 +91,7 @@ impl LGMLVQ {
 
         // Assert that the model has not been fit yet
         assert!(self.prototypes.len() == 0, "This model has already been fit.");
+
     }
 
     ///
@@ -151,7 +166,7 @@ impl LGMLVQ {
     pub fn fit (&mut self, data : &Vec<Array1<f64>>, labels : &Vec<String>) {
 
         // Check if the required constraints are present
-        self.check_fit_constraints(&data);
+        self.check_fit_constraints(&data, &labels);
 
         // Perform the required setup:
         // Initialize the prototypes
