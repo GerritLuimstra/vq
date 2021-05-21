@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use ndarray::{Array, Array1, Array2};
 use super::Prototype;
 
 /// Simple euclidean distance between two vectors

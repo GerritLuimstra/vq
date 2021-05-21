@@ -52,7 +52,7 @@ impl VQ {
         assert!(self.num_prototypes >= 2, "The prototype amount needs to exceed 1.");
 
         // Assert that there is enough data
-        assert!(data.len() as u32 > self.num_prototypes, 
+        assert!(data.len() as u32 >= self.num_prototypes, 
                 "There are more prototypes than data samples. Consider lowering the amount of prototypes.");
 
         // Assert that the model has not been fit yet
@@ -67,7 +67,7 @@ impl VQ {
         assert!(data.len() > 0, "There are no data samples given.");
         assert!(self.prototypes.len() > 0, "The model has not been fit yet.");
         assert!(self.prototypes[0].vector.len() == data[0].len(), 
-                "Data must be the same sized as was used in fit!");
+                "Data must have the same dimensions as was used in fit!");
     }
 
     ///
