@@ -15,6 +15,9 @@ Each model supports access to the learned parameters, the ability to reproduce r
 To access the documentation simply run:
 ```cargo doc --open```
 
+## Examples
+For practical examples on how to use the library, please consult the tests folder.
+
 ## References
 
 [1] Dana H. Ballard (2000). An Introduction to Natural Computation. MIT Press. p. 189.
