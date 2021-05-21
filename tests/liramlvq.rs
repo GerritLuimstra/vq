@@ -1,5 +1,5 @@
 use ndarray::Array1;
-use vq::LVQ;
+use vq::LiRaMLVQ;
 use approx::*;
 use std::collections::BTreeMap;
 
@@ -11,6 +11,40 @@ fn vec_all_close(a : &Vec<f64>, b : &Vec<f64>, tolerance: f64) -> bool {
         }
     }
     return true;
+}
+
+#[test]
+#[should_panic(expected = "The max rank needs to be bigger than 0!")]
+fn check_constraints_max_rank() {
+
+    // Create a class - prototype mapping for variable length prototypes
+    let mut prototype_mapping = BTreeMap::new();
+    prototype_mapping.insert(String::from("C0"), 1);
+    prototype_mapping.insert(String::from("C1"), 1);
+
+    // Setup the data
+    let seed = Some(42);
+    let data = vec![
+        Array1::<f64>::from_vec(vec![ 5.0, 2.0]),
+        Array1::<f64>::from_vec(vec![ 5.0, 3.0])
+    ];
+    let labels = vec![
+        "C0".to_string(),
+        "C1".to_string()
+    ];
+
+    // Create the model
+    let mut model = LiRaMLVQ::new(
+        0,                      // invalid max rank
+        prototype_mapping,      // prototypes
+        (0.1, 0.01),            // learning rate
+        1,                      // max epochs
+        seed                    // seed
+    );
+
+    // Perform the classification
+    // Will panic since max rank is not positive
+    model.fit(&data, &labels);
 }
 
 #[test]
@@ -35,9 +69,10 @@ fn check_constraints_prototypes() {
 
     // Create the model (with just 1 prototype)
     // This should panic
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                 // max rank
         prototype_mapping, // prototypes
-        0.1,               // learning rate
+        (0.1, 0.01),       // learning rate
         1,                 // max epochs
         seed               // seed
     );
@@ -67,9 +102,10 @@ fn check_constraints_enough_data() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                      // max rank
         prototype_mapping,      // prototypes
-        0.1,                    // learning rate
+        (0.1, 0.01),            // learning rate
         1,                      // max epochs
         seed                    // seed
     );
@@ -99,9 +135,10 @@ fn check_constraints_unknown_label() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                      // max rank
         prototype_mapping,      // prototypes
-        0.1,                    // learning rate
+        (0.1, 0.01),            // learning rate
         1,                      // max epochs
         seed                    // seed
     );
@@ -132,9 +169,10 @@ fn check_constraints_fitting_again() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                      // max rank
         prototype_mapping,      // prototypes
-        0.1,                    // learning rate
+        (0.1, 0.01),            // learning rate
         1,                      // max epochs
         seed                    // seed
     );
@@ -167,9 +205,10 @@ fn check_constraints_predict_no_data() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                  // max rank
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -201,9 +240,10 @@ fn check_constraints_len_data_not_eq_labels() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                  // max rank
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -229,9 +269,10 @@ fn check_constraints_predict_not_fit() {
     let seed = Some(42);
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                  // max rank
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -263,9 +304,10 @@ fn check_constraints_predict_not_same_dim() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                  // max rank
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -280,7 +322,7 @@ fn check_constraints_predict_not_same_dim() {
 }
 
 #[test]
-fn simple_classification_lvq() {
+fn simple_classification_liramlvq() {
 
     // Create a class - prototype mapping for variable length prototypes
     let mut prototype_mapping = BTreeMap::new();
@@ -307,9 +349,10 @@ fn simple_classification_lvq() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LiRaMLVQ::new(
+        2,                  // max rank
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         100,                // max epochs
         seed                // seed
     );
@@ -322,13 +365,4 @@ fn simple_classification_lvq() {
 
     // Assert that the predictions are correct
     assert_eq!(predictions, vec!["C0", "C0", "C0", "C1", "C1", "C1"]);
-
-    // Obtain the prototype information
-    let prototypes  = model.prototypes();
-    let prototype_1 = prototypes[0].vector.to_vec(); 
-    let prototype_2 = prototypes[1].vector.to_vec();
-    
-    // Assert that the prototypes are roughly at the centers
-    assert!(vec_all_close(&prototype_1, &vec![5.0, 3.0], 1e-1));
-    assert!(vec_all_close(&prototype_2, &vec![-5.0, 11.0], 1e-1));
 }

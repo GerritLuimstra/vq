@@ -1,5 +1,5 @@
 use ndarray::Array1;
-use vq::LVQ;
+use vq::LGMLVQ;
 use approx::*;
 use std::collections::BTreeMap;
 
@@ -35,9 +35,9 @@ fn check_constraints_prototypes() {
 
     // Create the model (with just 1 prototype)
     // This should panic
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping, // prototypes
-        0.1,               // learning rate
+        (0.1, 0.01),       // learning rate
         1,                 // max epochs
         seed               // seed
     );
@@ -67,9 +67,9 @@ fn check_constraints_enough_data() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,      // prototypes
-        0.1,                    // learning rate
+        (0.1, 0.01),            // learning rate
         1,                      // max epochs
         seed                    // seed
     );
@@ -99,9 +99,9 @@ fn check_constraints_unknown_label() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,      // prototypes
-        0.1,                    // learning rate
+        (0.1, 0.01),            // learning rate
         1,                      // max epochs
         seed                    // seed
     );
@@ -132,9 +132,9 @@ fn check_constraints_fitting_again() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,      // prototypes
-        0.1,                    // learning rate
+        (0.1, 0.01),            // learning rate
         1,                      // max epochs
         seed                    // seed
     );
@@ -167,9 +167,9 @@ fn check_constraints_predict_no_data() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -201,9 +201,9 @@ fn check_constraints_len_data_not_eq_labels() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -229,9 +229,9 @@ fn check_constraints_predict_not_fit() {
     let seed = Some(42);
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -263,9 +263,9 @@ fn check_constraints_predict_not_same_dim() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         1,                  // max epochs
         seed                // seed
     );
@@ -280,7 +280,7 @@ fn check_constraints_predict_not_same_dim() {
 }
 
 #[test]
-fn simple_classification_lvq() {
+fn simple_classification_lgmlvq() {
 
     // Create a class - prototype mapping for variable length prototypes
     let mut prototype_mapping = BTreeMap::new();
@@ -307,9 +307,9 @@ fn simple_classification_lvq() {
     ];
 
     // Create the model
-    let mut model = LVQ::new(
+    let mut model = LGMLVQ::new(
         prototype_mapping,  // prototypes
-        0.1,                // learning rate
+        (0.1, 0.01),        // learning rate
         100,                // max epochs
         seed                // seed
     );
@@ -322,13 +322,4 @@ fn simple_classification_lvq() {
 
     // Assert that the predictions are correct
     assert_eq!(predictions, vec!["C0", "C0", "C0", "C1", "C1", "C1"]);
-
-    // Obtain the prototype information
-    let prototypes  = model.prototypes();
-    let prototype_1 = prototypes[0].vector.to_vec(); 
-    let prototype_2 = prototypes[1].vector.to_vec();
-    
-    // Assert that the prototypes are roughly at the centers
-    assert!(vec_all_close(&prototype_1, &vec![5.0, 3.0], 1e-1));
-    assert!(vec_all_close(&prototype_2, &vec![-5.0, 11.0], 1e-1));
 }
