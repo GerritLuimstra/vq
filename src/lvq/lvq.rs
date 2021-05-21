@@ -100,20 +100,24 @@ impl LVQ {
         // based on the amount of prototypes specified for that class
         for (class_name, num_prototypes) in self.num_prototypes.iter() {
 
-            // Obtain all the data samples with the class 'class_name'
-            let mut data_class_indices = vec![];
+            // Compute the mean vector of the class
+            let mut class_sample_count = 0;
+            let mut mean_vector = Array1::<f64>::from_vec(vec![0.0; data[0].dim()]);
             for (index, sample_label) in labels.iter().enumerate() {
                 if sample_label == class_name {
-                    data_class_indices.push(index);
+                    class_sample_count += 1;
+                    mean_vector += &data[index];
                 }
             }
+            mean_vector /= class_sample_count as f64;
 
             // Grab 'num_prototypes' prototypes
             for _ in 0 .. *num_prototypes {
 
-                // Obtain a random prototype from the data samples by class and clone/own it
-                let selected_prototype = *data_class_indices.choose(&mut self.rng).unwrap();
-                let selected_prototype = data[selected_prototype].clone();
+                // Initialize the prototypes with the mean vector
+                // and a random variation between -0.1 and 0.1
+                let selected_prototype = mean_vector.clone();
+                let selected_prototype = selected_prototype + (self.rng).gen_range(-0.1 .. 0.1);
                 let selected_prototype = Prototype::new(selected_prototype, class_name.clone());
 
                 // Add the newly created prototypes to the prototype list
